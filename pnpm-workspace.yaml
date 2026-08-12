@@ -1,0 +1,11 @@
+allowBuilds:
+  core-js: true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true
+  workerd: true
+minimumReleaseAgeExclude:
+  - '@cloudflare/workers-types@5.20260812.1'
+  - miniflare@5.20260804.1-alpha
+  - wrangler@4.121.0

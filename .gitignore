@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+.env*
+!.env.example
+worker/.dev.vars
+worker/.wrangler/
+coverage
+*.log
+.DS_Store
+.playwright-cli/
+.playwright-mcp/
+output/
+
+tsconfig.tsbuildinfo

@@ -1,0 +1,58 @@
+"use client";
+
+import Script from "next/script";
+import { useEffect, useRef, useState } from "react";
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (
+        element: HTMLElement,
+        options: Record<string, unknown>,
+      ) => string;
+      remove: (widgetId: string) => void;
+    };
+  }
+}
+
+export function Turnstile({
+  onToken,
+  refreshKey = 0,
+}: {
+  onToken: (token: string) => void;
+  refreshKey?: number;
+}) {
+  const container = useRef<HTMLDivElement>(null),
+    callback = useRef(onToken),
+    [ready, setReady] = useState(false);
+  const sitekey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  useEffect(() => {
+    callback.current = onToken;
+  }, [onToken]);
+  useEffect(() => {
+    if (!ready || !sitekey || !container.current || !window.turnstile) return;
+    callback.current("");
+    const widgetId = window.turnstile.render(container.current, {
+      "sitekey": sitekey,
+      "action": "pixelize",
+      "theme": "auto",
+      "appearance": "interaction-only",
+      "callback": (token: string) => callback.current(token),
+      "error-callback": () => callback.current(""),
+      "expired-callback": () => callback.current(""),
+    });
+    return () => window.turnstile?.remove(widgetId);
+  }, [ready, refreshKey, sitekey]);
+  if (!sitekey)
+    return <p className="turnstile-note">Cloudflare AI 尚未配置。</p>;
+  return (
+    <div className="turnstile-box">
+      <Script
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+        strategy="afterInteractive"
+        onReady={() => setReady(true)}
+      />
+      <div ref={container} />
+    </div>
+  );
+}

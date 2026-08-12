@@ -1,0 +1,2 @@
+# Cloudflare's matching always-pass testing secret. Never use it in production.
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
