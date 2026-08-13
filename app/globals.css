@@ -832,6 +832,7 @@ svg {
   font-size: 0.68rem;
 }
 .pattern-preview-actions {
+  padding-right: 40px;
   display: flex;
   gap: 8px;
 }
@@ -867,6 +868,45 @@ svg {
   height: auto;
   border: 1px solid var(--border);
   background: var(--card);
+}
+.pattern-comparison-grid {
+  min-height: 0;
+  padding: 16px;
+  background: var(--muted);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.pattern-comparison-grid figure {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+.pattern-comparison-grid figcaption {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+.pattern-comparison-grid figure > div {
+  min-height: 0;
+  padding: 12px;
+  overflow: auto;
+  display: grid;
+  place-items: center;
+}
+.pattern-comparison-grid img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: calc(88dvh - 138px);
+  object-fit: contain;
 }
 
 @media (pointer: coarse) {

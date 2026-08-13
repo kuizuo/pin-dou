@@ -37,10 +37,51 @@ describe("图纸 PNG 导出", () => {
       fill: vi.fn(),
     } as unknown as CanvasRenderingContext2D);
     const withoutLegend = renderPattern(createSamplePattern(), false).height;
-    expect(withoutLegend).toBe(52 * 34 + 86);
+    expect(withoutLegend).toBe(52 * 34 + 116);
     expect(renderPattern(createSamplePattern()).height).toBeGreaterThan(
       withoutLegend,
     );
+  });
+
+  it("施工图带品牌、留白、十格刻度和汇总标签", () => {
+    const fillText = vi.fn(),
+      roundRect = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      fillStyle: "",
+      strokeStyle: "",
+      lineWidth: 1,
+      font: "",
+      textAlign: "left",
+      textBaseline: "alphabetic",
+      fillRect: vi.fn(),
+      fillText,
+      measureText: vi.fn(() => ({ width: 100 })),
+      beginPath: vi.fn(),
+      roundRect,
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      fill: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
+    const canvas = renderPattern({
+      ...createSamplePattern(),
+      width: 31,
+      height: 31,
+      cells: Array(31 * 31).fill(null),
+    });
+    const labels = fillText.mock.calls.map(([text]) => text);
+    expect(canvas.width).toBe(31 * 34 + 96);
+    expect(labels).toEqual(expect.arrayContaining([
+      "拼豆图纸生成器",
+      "31 × 31 豆板",
+      "MARD",
+      "10",
+      "20",
+      "30",
+      "共 0 色 · 0 粒",
+    ]));
+    expect(roundRect).toHaveBeenCalled();
+    expect(roundRect.mock.calls.some(([, , width]) => width === 128)).toBe(true);
   });
 
   it("颜色块内标色号，下方标数量", () => {
@@ -69,7 +110,7 @@ describe("图纸 PNG 导出", () => {
       height: 1,
       cells: ["A1", "A1"],
     });
-    expect(roundRect).toHaveBeenCalledOnce();
+    expect(roundRect).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), 68, 64, 14);
     expect(fillText.mock.calls.map(([text]) => text)).toEqual(
       expect.arrayContaining(["A1", "2"]),
     );
@@ -96,6 +137,7 @@ describe("图纸 PNG 导出", () => {
       fillText: vi.fn(),
       strokeRect,
       beginPath: vi.fn(() => paths.push([])),
+      roundRect: vi.fn(),
       moveTo: vi.fn((x: number, y: number) => paths.at(-1)?.push([x, y, 0, 0])),
       lineTo: vi.fn((x: number, y: number) =>
         paths.at(-1)?.at(-1)?.splice(2, 2, x, y),
@@ -118,12 +160,12 @@ describe("图纸 PNG 导出", () => {
     );
     expect(strokeRect).not.toHaveBeenCalled();
     expect(widths).toEqual([0.75, 2]);
-    expect(paths[1]).toEqual([
-      [1, 85, 1, 117],
-      [340, 85, 340, 117],
-      [679, 85, 679, 117],
-      [1, 85, 679, 85],
-      [1, 117, 679, 117],
+    expect(paths.filter(path => path.length).at(-1)).toEqual([
+      [49, 77, 49, 109],
+      [388, 77, 388, 109],
+      [727, 77, 727, 109],
+      [49, 77, 727, 77],
+      [49, 109, 727, 109],
     ]);
   });
 
@@ -146,6 +188,7 @@ describe("图纸 PNG 导出", () => {
       fillText: vi.fn(),
       strokeRect: vi.fn(),
       beginPath: vi.fn(),
+      roundRect: vi.fn(),
       moveTo: vi.fn(),
       lineTo: vi.fn(),
       stroke: vi.fn(),

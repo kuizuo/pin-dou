@@ -5,6 +5,7 @@ import {
   Check,
   Circle,
   Clipboard,
+  Columns2,
   Download,
   Eraser,
   Grid2X2,
@@ -244,6 +245,78 @@ function PatternPreviewDialog({
   );
 }
 
+function PatternComparisonDialog({
+  original,
+  current,
+  name,
+  onClose,
+}: {
+  original: string;
+  current: string;
+  name: string;
+  onClose: () => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null),
+    returnFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    returnFocus.current = document.activeElement as HTMLElement;
+    dialog.current?.showModal();
+    return () => returnFocus.current?.focus();
+  }, []);
+  return (
+    <dialog
+      ref={dialog}
+      className="pattern-preview-dialog pattern-comparison-dialog max-[641px]:h-[min(78dvh,680px)]!"
+      aria-labelledby="pattern-comparison-title"
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      onMouseDown={event => event.target === event.currentTarget && onClose()}
+    >
+      <div className="pattern-preview-card">
+        <div className="pattern-preview-heading">
+          <div>
+            <h2 id="pattern-comparison-title">对比原图</h2>
+            <p>{name}</p>
+          </div>
+          <Button
+            className="pattern-preview-close"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="关闭对比"
+            onClick={onClose}
+          >
+            <X />
+          </Button>
+        </div>
+        <div className="pattern-comparison-grid max-[641px]:gap-1.5! max-[641px]:p-2!">
+          <figure>
+            <figcaption className="max-[641px]:px-2! max-[641px]:py-2! max-[641px]:text-center!">原图</figcaption>
+            <div className="max-[641px]:p-1.5!">
+              <img
+                className="max-[641px]:max-h-[calc(78dvh-122px)]!"
+                src={original}
+                alt={`${name}原图`}
+              />
+            </div>
+          </figure>
+          <figure>
+            <figcaption className="max-[641px]:px-2! max-[641px]:py-2! max-[641px]:text-center!">当前图纸</figcaption>
+            <div className="max-[641px]:p-1.5!">
+              <img
+                className="max-[641px]:max-h-[calc(78dvh-122px)]!"
+                src={current}
+                alt={`${name}当前图纸`}
+              />
+            </div>
+          </figure>
+        </div>
+      </div>
+    </dialog>
+  );
+}
+
 function ToolColorProperties({
   selected,
   colors,
@@ -335,6 +408,10 @@ export function Result({
   });
   const [preview, setPreview] = useState<string | null>(null),
     [notice, setNotice] = useState("已保存");
+  const [comparison, setComparison] = useState<{
+    original: string;
+    current: string;
+  } | null>(null);
   const [saving, setSaving] = useState(false),
     [adjusting, setAdjusting] = useState(false);
   const [versionName, setVersionName] = useState(""),
@@ -749,6 +826,20 @@ export function Result({
     }
     finally {
       setSaving(false);
+    }
+  }
+
+  async function openComparison() {
+    try {
+      setComparison({
+        original: await readBlobAsDataUrl(projectRef.current.source),
+        current: renderPattern(patternRef.current, false).toDataURL("image/png"),
+      });
+    }
+    catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "原图对比无法打开。",
+      );
     }
   }
 
@@ -1523,6 +1614,15 @@ export function Result({
                       个版本
                     </small>
                   </div>
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => void openComparison()}
+                  >
+                    <Columns2 />
+                    对比原图
+                  </Button>
                   <div className="panel-manual-version min-[980px]:[&_input]:h-[34px]! min-[980px]:[&_input]:min-h-[34px]! min-[980px]:[&_button]:h-[34px]! min-[980px]:[&_button]:min-h-[34px]! min-[980px]:[&_input]:px-[9px]! min-[980px]:[&_input]:text-[0.72rem]! max-[641px]:[&_input]:h-10! max-[641px]:[&_input]:min-h-10! max-[641px]:[&_input]:text-[0.78rem]! max-[641px]:[&_button]:h-9! max-[641px]:[&_button]:min-h-9! max-[641px]:[&_button]:px-2.5! max-[641px]:[&_button]:text-[0.72rem]! max-[641px]:[&_button]:font-[650]!">
                     <label htmlFor="version-name">给当前版本取名</label>
                     <div>
@@ -1610,6 +1710,14 @@ export function Result({
           onClose={() => setPreview(null)}
           onCopy={copy}
           onDownload={() => void downloadPatternPng(patternRef.current)}
+        />
+      )}
+      {comparison && (
+        <PatternComparisonDialog
+          original={comparison.original}
+          current={comparison.current}
+          name={pattern.name}
+          onClose={() => setComparison(null)}
         />
       )}
     </main>

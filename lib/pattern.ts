@@ -740,39 +740,91 @@ export function drawPatternGrid(
 
 export function renderPattern(pattern: Pattern, includeLegend = true) {
   const cellSize = 34,
-    header = 84,
+    pagePadding = 48,
+    header = 56,
+    tickSpace = 20,
+    footerSpace = 40,
     stats = patternStats(pattern),
+    total = stats.reduce((sum, item) => sum + item.count, 0),
+    boardX = pagePadding,
+    boardY = header + tickSpace,
+    boardWidth = pattern.width * cellSize,
     boardHeight = pattern.height * cellSize,
     itemWidth = 112,
     itemHeight = 110;
   const canvas = document.createElement("canvas");
-  canvas.width = pattern.width * cellSize + 2;
+  canvas.width = boardWidth + pagePadding * 2;
   const legendColumns = Math.max(
       1,
-      Math.floor((canvas.width - 48) / itemWidth),
+      Math.floor((boardWidth - 48) / itemWidth),
     ),
     legendRows = Math.ceil(stats.length / legendColumns),
-    legendTop = header + boardHeight + 30;
+    legendTop = boardY + boardHeight + 36;
   canvas.height
-    = includeLegend && stats.length
-      ? legendTop + 38 + legendRows * itemHeight + 24
-      : header + boardHeight + 2;
+    = includeLegend
+      ? legendTop + 60 + legendRows * itemHeight + 28
+      : boardY + boardHeight + footerSpace;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("当前浏览器无法导出图片。");
+  const drawTag = (text: string, x: number, y: number) => {
+    context.font = "700 15px sans-serif";
+    const width
+      = Math.ceil(context.measureText?.(text).width ?? text.length * 10) + 28;
+    context.beginPath();
+    context.roundRect(x, y, width, 34, 17);
+    context.fillStyle = "#fde7f1";
+    context.fill();
+    context.fillStyle = "#b61f65";
+    context.textAlign = "left";
+    context.textBaseline = "middle";
+    context.fillText(text, x + 14, y + 17);
+    return width;
+  };
   context.fillStyle = "#fffaf7";
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = "#182235";
   context.font = "700 26px sans-serif";
-  context.fillText(pattern.name, 18, 32);
-  context.font = "15px sans-serif";
-  context.fillText(
-    `${pattern.width} × ${pattern.height} 豆板 · ${stats.reduce((sum, item) => sum + item.count, 0)} 粒 · MARD`,
-    18,
-    60,
-  );
+  context.textAlign = "left";
+  context.textBaseline = "alphabetic";
+  context.fillText(pattern.name, pagePadding, 43);
+  const nameWidth = context.measureText?.(pattern.name).width ?? pattern.name.length * 26,
+    boardTagX = pagePadding + nameWidth + 16,
+    boardTagWidth = drawTag(
+      `${pattern.width} × ${pattern.height} 豆板`,
+      boardTagX,
+      18,
+    );
+  drawTag("MARD", boardTagX + boardTagWidth + 8, 18);
+  const brandRight = canvas.width - pagePadding,
+    logoX = brandRight - 163;
+  context.beginPath();
+  context.roundRect(logoX, 18, 32, 32, 7);
+  context.fillStyle = "#fff7f8";
+  context.fill();
+  [
+    "#f551a2", "#ffd651", "#7544d8", "#45bcd2",
+    "#32aa70", "#f7f4ef", "#f7f4ef", "#ff9b52",
+    "#264774", "#17161b", "#17161b", "#ee8fc4",
+    "#ad8de8", "#f7f4ef", "#f7f4ef", "#83cf5b",
+  ].forEach((color, index) => {
+    context.fillStyle = color;
+    context.beginPath();
+    context.roundRect(
+      logoX + 3 + (index % 4) * 7,
+      21 + Math.floor(index / 4) * 7,
+      5,
+      5,
+      2.5,
+    );
+    context.fill();
+  });
+  context.fillStyle = "#182235";
+  context.font = "700 17px sans-serif";
+  context.textAlign = "right";
+  context.fillText("拼豆图纸生成器", brandRight, 43);
   pattern.cells.forEach((id, index) => {
-    const x = (index % pattern.width) * cellSize,
-      y = Math.floor(index / pattern.width) * cellSize + header;
+    const x = boardX + (index % pattern.width) * cellSize,
+      y = boardY + Math.floor(index / pattern.width) * cellSize;
     if (id) {
       const color = beadById(id),
         [r, g, b] = color.rgb;
@@ -786,16 +838,37 @@ export function renderPattern(pattern: Pattern, includeLegend = true) {
       context.fillText(id, x + cellSize / 2, y + cellSize / 2);
     }
   });
-  drawPatternGrid(context, pattern.width, pattern.height, cellSize, 0, header);
-  if (includeLegend && stats.length) {
+  drawPatternGrid(
+    context,
+    pattern.width,
+    pattern.height,
+    cellSize,
+    boardX,
+    boardY,
+  );
+  context.fillStyle = "#667085";
+  context.font = "700 13px sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "bottom";
+  for (let column = 10; column <= pattern.width; column += 10)
+    context.fillText(String(column), boardX + column * cellSize, boardY - 5);
+  context.textAlign = "right";
+  context.textBaseline = "middle";
+  for (let row = 10; row <= pattern.height; row += 10)
+    context.fillText(String(row), boardX - 8, boardY + row * cellSize);
+  if (includeLegend) {
     context.fillStyle = "#182235";
     context.font = "700 22px sans-serif";
     context.textAlign = "left";
     context.textBaseline = "alphabetic";
-    context.fillText("颜色用量", 24, legendTop + 20);
+    context.fillText("颜色用量", pagePadding, legendTop + 24);
+    drawTag(`共 ${stats.length} 色 · ${total} 粒`, pagePadding + 112, legendTop);
     stats.forEach(({ color, count }, index) => {
-      const centerX = 24 + (index % legendColumns) * itemWidth + itemWidth / 2,
-        top = legendTop + 38 + Math.floor(index / legendColumns) * itemHeight;
+      const centerX
+          = pagePadding
+            + (index % legendColumns) * itemWidth
+            + 34,
+        top = legendTop + 60 + Math.floor(index / legendColumns) * itemHeight;
       context.beginPath();
       context.roundRect(centerX - 34, top, 68, 64, 14);
       context.fillStyle = color.hex;
