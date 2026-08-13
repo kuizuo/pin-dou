@@ -398,7 +398,7 @@ export function Home({
             <span className="eyebrow">只保存在当前设备</span>
             <h2 className="mt-[5px] text-[1.9rem]">我的作品</h2>
           </div>
-          <div className="flex gap-2 max-[640px]:w-full max-[640px]:gap-1 max-[640px]:[&>*:not([data-backup-settings])]:flex-1">
+          <div className="flex gap-2 max-[640px]:self-end max-[640px]:gap-1">
             <input
               ref={backup}
               type="file"
@@ -557,17 +557,24 @@ export function Home({
                                   <FolderOpen />
                                   打开
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setPreview({
-                                    project,
-                                    src: renderPattern(project.pattern).toDataURL("image/png"),
-                                  })}
-                                >
-                                  <Eye />
-                                  预览
-                                </Button>
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={(
+                                      <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label="预览"
+                                        onClick={() => setPreview({
+                                          project,
+                                          src: renderPattern(project.pattern).toDataURL("image/png"),
+                                        })}
+                                      >
+                                        <Eye />
+                                      </Button>
+                                    )}
+                                  />
+                                  <TooltipContent>预览</TooltipContent>
+                                </Tooltip>
                                 <Tooltip>
                                   <TooltipTrigger
                                     render={(

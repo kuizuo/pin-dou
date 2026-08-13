@@ -368,6 +368,11 @@ describe("统一图纸工作台", () => {
     expect(regenerate).toBeLessThan(choose);
   });
 
+  it("AI 处理失败后可以直接修改服务设置", () => {
+    expect(prepare).toContain("修改 AI 设置");
+    expect(prepare).toContain("onClick={onOpenSettings}");
+  });
+
   it("记住上一次选择的图片处理方式", () => {
     expect(workspace).toContain("savedGenerationMode");
     expect(workspace).toContain("window.localStorage.setItem");

@@ -294,6 +294,7 @@ function VariantCard({
   failure,
   busy,
   onChoose,
+  onOpenSettings,
   onPreview,
   onQuotaFallback,
   onRetry,
@@ -302,6 +303,7 @@ function VariantCard({
   failure?: AiStyleFailure;
   busy: boolean;
   onChoose: (candidate: AiStyleCandidate) => void;
+  onOpenSettings: () => void;
   onPreview: (src: string) => void;
   onQuotaFallback: () => void;
   onRetry: () => void;
@@ -373,13 +375,16 @@ function VariantCard({
                 </Button>
               )
             : (
-                <Button
-                  className="max-[901px]:col-span-full! max-[901px]:w-full! max-[641px]:col-auto! max-[641px]:w-auto! max-[641px]:px-2.5!"
-                  variant="outline"
-                  onClick={onRetry}
-                >
-                  重试
-                </Button>
+                <div className="flex gap-2 max-[901px]:col-span-full max-[901px]:w-full max-[901px]:[&>button]:flex-1">
+                  <Button
+                    variant="outline"
+                    onClick={onOpenSettings}
+                  >
+                    <Settings />
+                    修改 AI 设置
+                  </Button>
+                  <Button onClick={onRetry}>重试</Button>
+                </div>
               )
           : null}
     </article>
@@ -654,6 +659,7 @@ export function Prepare({
               failure={failures[0]}
               busy={busy && !candidates.length}
               onChoose={onChooseCandidate}
+              onOpenSettings={() => setAiSettingsOpen(true)}
               onPreview={setPreviewSrc}
               onQuotaFallback={() => {
                 onAiProviderChange("gemini");
