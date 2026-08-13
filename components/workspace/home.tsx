@@ -194,7 +194,7 @@ export function Home({
       <section className="grid min-h-[520px] grid-cols-[1.05fr_0.8fr] items-center gap-[clamp(28px,6vw,80px)] overflow-hidden rounded-[28px] border border-border [background:radial-gradient(circle_at_90%_5%,#e5f8fb_0,transparent_32%),radial-gradient(circle_at_5%_90%,#fde6f0_0,transparent_32%),var(--card)] p-[clamp(28px,5vw,70px)] shadow-[0_20px_60px_rgb(24_34_53/0.07)] max-[901px]:grid-cols-[1fr_340px] max-[641px]:min-h-0 max-[641px]:grid-cols-1 max-[641px]:gap-[22px] max-[641px]:rounded-[19px] max-[641px]:px-4 max-[641px]:pt-7 max-[641px]:pb-4">
         <div>
           <span className="eyebrow">MARD 291 色 · AI 生成图纸</span>
-          <h1 className="mt-3 mb-[18px] max-w-[680px] text-[clamp(2.2rem,5.4vw,4.6rem)] leading-[1.02] tracking-[-0.055em] max-[640px]:text-[2.5rem]">
+          <h1 className="mt-3 mb-[18px] max-w-[680px] text-[clamp(2.2rem,5.4vw,4.2rem)] leading-[1.02] tracking-[-0.055em] max-[640px]:text-[2.5rem]">
             一张照片，变成真正能照着拼的图纸
           </h1>
           <p className="max-w-[600px] text-[1.05rem] leading-[1.8] text-muted-foreground max-[640px]:text-[0.9rem]">

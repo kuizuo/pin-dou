@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
 import {
@@ -79,7 +80,7 @@ export default function HelpPage() {
             <CircleHelp size={15} />
             使用帮助
           </Badge>
-          <h1 className="m-0 text-4xl font-black tracking-tight sm:text-5xl">
+          <h1 className="m-0 text-3xl font-black tracking-tight sm:text-4xl">
             从一张图片，到可以开拼的图纸。
           </h1>
           <p className="mt-4 text-base leading-7 text-muted-foreground">
@@ -98,6 +99,105 @@ export default function HelpPage() {
             <ArrowRight size={17} />
           </Link>
         </header>
+
+        <section
+          className="mb-12"
+          aria-labelledby="preview-title"
+        >
+          <div className="mb-4 flex items-end justify-between gap-4">
+            <div>
+              <span className="eyebrow">效果预览</span>
+              <h2
+                id="preview-title"
+                className="mb-0 mt-1 text-xl font-black"
+              >
+                图片会变成什么样？
+              </h2>
+            </div>
+            <span className="hidden text-sm text-muted-foreground sm:block">
+              下面是这个示例的真实生成结果
+            </span>
+          </div>
+
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-[0_18px_50px_rgb(80_44_59/0.08)] sm:p-6">
+            <div
+              className="pointer-events-none absolute inset-0 opacity-55"
+              style={{
+                backgroundImage:
+                  "radial-gradient(circle, color-mix(in srgb, var(--primary), transparent 78%) 1px, transparent 1.5px)",
+                backgroundSize: "18px 18px",
+                maskImage:
+                  "linear-gradient(to right, transparent, black 35%, black 65%, transparent)",
+              }}
+              aria-hidden="true"
+            />
+            <div className="relative grid items-stretch gap-3 sm:grid-cols-[1fr_auto_1fr] sm:gap-4">
+              <article className="flex min-h-64 flex-col rounded-xl border border-border bg-background/90 p-4">
+                <div className="flex items-center justify-between">
+                  <Badge
+                    variant="outline"
+                    className="bg-card font-bold"
+                  >
+                    示例原图
+                  </Badge>
+                  <span className="text-xs font-bold text-muted-foreground">
+                    插画
+                  </span>
+                </div>
+                <div className="grid flex-1 place-items-center py-5">
+                  <Image
+                    src="/samples/sample-cat.svg"
+                    alt="粉色背景的猫咪原图示例"
+                    width={208}
+                    height={208}
+                    className="size-44 rounded-2xl shadow-[0_12px_28px_rgb(80_44_59/0.16)] sm:size-52"
+                  />
+                </div>
+              </article>
+
+              <div className="grid place-items-center py-1 text-primary sm:px-1">
+                <span className="grid size-10 place-items-center rounded-full border border-border bg-card shadow-sm">
+                  <ArrowRight
+                    size={18}
+                    className="rotate-90 sm:rotate-0"
+                    aria-hidden="true"
+                  />
+                </span>
+                <span className="sr-only">转换为</span>
+              </div>
+
+              <article className="flex min-h-64 flex-col rounded-xl border border-primary/25 bg-[linear-gradient(145deg,#fffafd_0%,#fff_68%)] p-4">
+                <div className="flex items-center justify-between">
+                  <Badge
+                    variant="outline"
+                    className="bg-card font-bold"
+                  >
+                    实际图纸
+                  </Badge>
+                  <span className="text-xs font-bold text-muted-foreground">
+                    本地处理
+                  </span>
+                </div>
+                <div className="grid flex-1 place-items-center py-5">
+                  <Image
+                    src="/help/sample-cat-pattern.png"
+                    alt="猫咪示例经过本地处理后生成的 65 乘 65 格拼豆图纸"
+                    width={208}
+                    height={208}
+                    className="size-44 rounded-sm border border-workbench-border bg-white shadow-[0_12px_28px_rgb(80_44_59/0.12)] sm:size-52"
+                  />
+                </div>
+                <div className="flex items-center justify-center gap-3 border-t border-border pt-3 text-xs font-bold text-muted-foreground">
+                  <span>65 × 65 格</span>
+                  <span className="size-1 rounded-full bg-border" />
+                  <span>真实 MARD 色</span>
+                  <span className="size-1 rounded-full bg-border" />
+                  <span>可继续精修</span>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
 
         <section aria-labelledby="quick-start">
           <h2
