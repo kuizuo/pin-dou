@@ -1,3 +1,4 @@
+import { diff } from "color-diff";
 import type { BeadColor, Pattern, PatternStats } from "./types";
 import { MARD_DATA } from "./mard-data";
 
@@ -32,6 +33,13 @@ export function labDistance(
   return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 }
 
+export function colorDistance(
+  [L1, a1, b1]: [number, number, number],
+  [L2, a2, b2]: [number, number, number],
+) {
+  return diff({ L: L1, a: a1, b: b1 }, { L: L2, a: a2, b: b2 });
+}
+
 const toHex = (value: number) => value.toString(16).padStart(2, "0");
 
 export const BEAD_COLORS: BeadColor[] = MARD_DATA.split("\n").map((row) => {
@@ -57,11 +65,16 @@ export function nearestBead(
   colors = BEAD_COLORS,
 ) {
   const lab = rgbToLab([rgb.r, rgb.g, rgb.b]);
-  return colors.reduce(
-    (best, color) =>
-      labDistance(lab, color.lab) < labDistance(lab, best.lab) ? color : best,
-    colors[0],
-  );
+  let best = colors[0],
+    distance = colorDistance(lab, best.lab);
+  for (let index = 1; index < colors.length; index += 1) {
+    const candidate = colorDistance(lab, colors[index].lab);
+    if (candidate < distance) {
+      best = colors[index];
+      distance = candidate;
+    }
+  }
+  return best;
 }
 
 export function beadById(id: string | null) {

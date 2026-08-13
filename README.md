@@ -44,3 +44,9 @@ bun run worker:check
 
 - `react-zoom-pan-pinch` 4.0.4
 - 许可：MIT License，Copyright (c) 2019 prc5
+
+### 本地颜色匹配
+
+- `color-diff` 1.4.0
+- 许可：BSD 3-Clause License，Copyright (c) 2012-2023 Markus Ekholm
+- 使用 CIEDE2000 将图片颜色匹配到最接近的 MARD 色号。

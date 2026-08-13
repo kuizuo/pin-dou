@@ -13,6 +13,7 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:processing-modes": "vitest run tests/beads.test.ts tests/color-diff.test.ts",
     "worker:dev": "wrangler dev --config worker/wrangler.jsonc",
     "worker:types": "wrangler types --config worker/wrangler.jsonc worker/worker-configuration.d.ts",
     "worker:check": "wrangler deploy --dry-run --config worker/wrangler.jsonc"
@@ -21,6 +22,7 @@
     "@base-ui/react": "^1.7.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "color-diff": "1.4.0",
     "heic2any": "0.0.4",
     "lucide-react": "latest",
     "magic-wand-tool": "1.1.7",
@@ -38,6 +40,7 @@
     "@opennextjs/cloudflare": "^1.20.2",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@tailwindcss/postcss": "^4.3.3",
+    "@types/color-diff": "1.2.5",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",

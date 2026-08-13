@@ -9,9 +9,10 @@ import { removePlainBackground } from "./background";
 import {
   BEAD_COLORS,
   beadById,
-  labDistance,
+  colorDistance,
   nearestBead,
   patternStats,
+  rgbToLab,
 } from "./beads";
 import { DEFAULT_TRANSFORM } from "./types";
 
@@ -295,63 +296,32 @@ function choosePalette(
     weight,
   }));
   if (points.length <= maxColors) return points.map(point => point.color);
-  const centroids: Array<[number, number, number]> = [
-    [...points.sort((a, b) => b.weight - a.weight)[0].color.lab],
+  const selected = [
+    points.reduce((best, point) => point.weight > best.weight ? point : best),
   ];
-  while (centroids.length < maxColors) {
-    const next = points.reduce(
-      (best, point) => {
-        const distance
+  while (selected.length < maxColors) {
+    const next = points
+      .filter(point => !selected.includes(point))
+      .reduce((best, point) => {
+        const score
           = Math.min(
-            ...centroids.map(centroid =>
-              labDistance(point.color.lab, centroid),
+            ...selected.map(item =>
+              colorDistance(point.color.lab, item.color.lab),
             ),
           ) * Math.sqrt(point.weight);
-        return distance > best.distance ? { point, distance } : best;
-      },
-      { point: points[0], distance: -1 },
-    );
-    centroids.push([...next.point.color.lab]);
+        return score > best.score ? { point, score } : best;
+      }, { point: points[0], score: -1 }).point;
+    selected.push(next);
   }
-  for (let pass = 0; pass < 6; pass += 1) {
-    const totals = centroids.map(() => ({ l: 0, a: 0, b: 0, weight: 0 }));
-    for (const point of points) {
-      const group = centroids.reduce(
-        (best, centroid, index) =>
-          labDistance(point.color.lab, centroid) < best.distance
-            ? { index, distance: labDistance(point.color.lab, centroid) }
-            : best,
-        { index: 0, distance: Infinity },
-      ).index;
-      totals[group].l += point.color.lab[0] * point.weight;
-      totals[group].a += point.color.lab[1] * point.weight;
-      totals[group].b += point.color.lab[2] * point.weight;
-      totals[group].weight += point.weight;
-    }
-    totals.forEach((total, index) => {
-      if (total.weight)
-        centroids[index] = [
-          total.l / total.weight,
-          total.a / total.weight,
-          total.b / total.weight,
-        ];
-    });
-  }
-  const selected: typeof BEAD_COLORS = [];
-  for (const centroid of centroids) {
-    const color = availableColors.reduce(
-      (best, candidate) =>
-        labDistance(candidate.lab, centroid) < labDistance(best.lab, centroid)
-          ? candidate
-          : best,
-      availableColors[0],
-    );
-    if (!selected.some(item => item.id === color.id)) selected.push(color);
-  }
-  return selected;
+  return selected.map(point => point.color);
 }
 
-function cleanSmallRegions(cells: Array<string | null>, width: number) {
+function cleanSmallRegions(
+  cells: Array<string | null>,
+  width: number,
+  maxSize = 2,
+  maxDistance = 12,
+) {
   const result = [...cells],
     visited = new Uint8Array(cells.length);
   for (let start = 0; start < cells.length; start += 1) {
@@ -379,11 +349,11 @@ function cleanSmallRegions(cells: Array<string | null>, width: number) {
           neighbors.set(cells[next]!, (neighbors.get(cells[next]!) ?? 0) + 1);
       }
     }
-    if (region.length <= 2 && neighbors.size) {
+    if (region.length <= maxSize && neighbors.size) {
       const replacement = [...neighbors].sort((a, b) => b[1] - a[1])[0][0];
       if (
-        labDistance(beadById(cells[start]!).lab, beadById(replacement).lab)
-        <= 12
+        colorDistance(beadById(cells[start]!).lab, beadById(replacement).lab)
+        <= maxDistance
       )
         for (const index of region) result[index] = replacement;
     }
@@ -402,7 +372,7 @@ function mergeSimilarColors(cells: Array<string | null>, threshold: number) {
     const replacement = representatives
       .map(candidate => ({
         candidate,
-        distance: labDistance(source.lab, beadById(candidate).lab),
+        distance: colorDistance(source.lab, beadById(candidate).lab),
       }))
       .filter(item => item.distance <= threshold)
       .sort((a, b) => a.distance - b.distance)[0]?.candidate;
@@ -428,16 +398,33 @@ export function imageDataToCells(
     Math.max(1, Math.min(30, maxColors)),
     availableColors,
   );
+  if (!palette.length) return Array(width * height).fill(null);
+  const selected = new Set(palette.map(color => color.id)),
+    remap = new Map(
+      availableColors.map(color => [
+        color.id,
+        selected.has(color.id)
+          ? color.id
+          : nearestBead(
+            { r: color.rgb[0], g: color.rgb[1], b: color.rgb[2] },
+            palette,
+          ).id,
+      ]),
+    );
   let cells = Array.from({ length: width * height }, (_, index) => {
     const offset = index * 4;
     return pixels[offset + 3] < 36
       ? null
-      : nearestBead(
-        { r: pixels[offset], g: pixels[offset + 1], b: pixels[offset + 2] },
-        palette,
-      ).id;
+      : remap.get(
+        nearestBead(
+          { r: pixels[offset], g: pixels[offset + 1], b: pixels[offset + 2] },
+          availableColors,
+        ).id,
+      )!;
   });
   if (processingMode === "edge") cells = cleanSmallRegions(cells, width);
+  else if (processingMode === "dominant")
+    cells = cleanSmallRegions(cells, width, 4, 18);
   return mergeSimilarColors(cells, Math.max(0, Math.min(30, colorMerge)));
 }
 
@@ -459,20 +446,22 @@ function tileRepresentative(
   stride: number,
   tileX: number,
   tileY: number,
+  scale: number,
   mode: "average" | "dominant",
 ) {
   const buckets = new Map<
     number,
-    { count: number; red: number; green: number; blue: number; alpha: number }
+    { blue: number; green: number; red: number; weight: number }
   >();
   let red = 0,
     green = 0,
     blue = 0,
     alpha = 0,
     weight = 0;
-  for (let y = 0; y < 4; y += 1)
-    for (let x = 0; x < 4; x += 1) {
-      const offset = ((tileY * 4 + y) * stride + tileX * 4 + x) * 4,
+  for (let y = 0; y < scale; y += 1)
+    for (let x = 0; x < scale; x += 1) {
+      const offset
+          = ((tileY * scale + y) * stride + tileX * scale + x) * 4,
         pixelAlpha = pixels[offset + 3];
       if (pixelAlpha < 12) continue;
       const pixelWeight = pixelAlpha / 255;
@@ -481,23 +470,16 @@ function tileRepresentative(
       blue += toLinear(pixels[offset + 2]) * pixelWeight;
       alpha += pixelAlpha;
       weight += pixelWeight;
-      const bucket
-        = ((pixels[offset] >> 4) << 8)
-          | ((pixels[offset + 1] >> 4) << 4)
-          | (pixels[offset + 2] >> 4);
-      const current = buckets.get(bucket) ?? {
-        count: 0,
-        red: 0,
-        green: 0,
-        blue: 0,
-        alpha: 0,
-      };
-      current.count += pixelWeight;
-      current.red += pixels[offset] * pixelWeight;
-      current.green += pixels[offset + 1] * pixelWeight;
-      current.blue += pixels[offset + 2] * pixelWeight;
-      current.alpha += pixelAlpha * pixelWeight;
-      buckets.set(bucket, current);
+      const key
+          = ((pixels[offset] >> 5) << 6)
+            | ((pixels[offset + 1] >> 5) << 3)
+            | (pixels[offset + 2] >> 5),
+        bucket = buckets.get(key) ?? { blue: 0, green: 0, red: 0, weight: 0 };
+      bucket.red += toLinear(pixels[offset]) * pixelWeight;
+      bucket.green += toLinear(pixels[offset + 1]) * pixelWeight;
+      bucket.blue += toLinear(pixels[offset + 2]) * pixelWeight;
+      bucket.weight += pixelWeight;
+      buckets.set(key, bucket);
     }
   if (!weight) return [0, 0, 0, 0] as const;
   if (mode === "average")
@@ -505,16 +487,16 @@ function tileRepresentative(
       Math.round(fromLinear(red / weight)),
       Math.round(fromLinear(green / weight)),
       Math.round(fromLinear(blue / weight)),
-      Math.round(alpha / 16),
+      Math.round(alpha / scale ** 2),
     ] as const;
-  const winner = [...buckets.values()].reduce((best, item) =>
-    item.count > best.count ? item : best,
+  const dominant = [...buckets.values()].reduce((best, bucket) =>
+    bucket.weight > best.weight ? bucket : best,
   );
   return [
-    Math.round(winner.red / winner.count),
-    Math.round(winner.green / winner.count),
-    Math.round(winner.blue / winner.count),
-    Math.round(winner.alpha / winner.count),
+    Math.round(fromLinear(dominant.red / dominant.weight)),
+    Math.round(fromLinear(dominant.green / dominant.weight)),
+    Math.round(fromLinear(dominant.blue / dominant.weight)),
+    Math.round(alpha / scale ** 2),
   ] as const;
 }
 
@@ -524,8 +506,9 @@ export function samplePixelTiles(
   height: number,
   mode: ProcessingMode,
 ) {
-  const stride = width * 4;
-  if (sourcePixels.length !== stride * height * 4 * 4)
+  const scale = Math.sqrt(sourcePixels.length / (width * height * 4)),
+    stride = width * scale;
+  if (!Number.isInteger(scale) || scale < 1)
     throw new Error("取样图片像素不完整。");
   const averages = new Uint8ClampedArray(width * height * 4),
     dominants = new Uint8ClampedArray(width * height * 4);
@@ -533,18 +516,26 @@ export function samplePixelTiles(
     for (let x = 0; x < width; x += 1) {
       const offset = (y * width + x) * 4;
       averages.set(
-        tileRepresentative(sourcePixels, stride, x, y, "average"),
+        tileRepresentative(sourcePixels, stride, x, y, scale, "average"),
         offset,
       );
       if (mode !== "average")
         dominants.set(
-          tileRepresentative(sourcePixels, stride, x, y, "dominant"),
+          tileRepresentative(sourcePixels, stride, x, y, scale, "dominant"),
           offset,
         );
     }
   if (mode === "average") return averages;
   if (mode === "dominant") return dominants;
-  const result = new Uint8ClampedArray(averages);
+  const result = new Uint8ClampedArray(averages),
+    labs = Array.from({ length: width * height }, (_, index) => {
+      const offset = index * 4;
+      return rgbToLab([
+        averages[offset],
+        averages[offset + 1],
+        averages[offset + 2],
+      ]);
+    });
   for (let y = 0; y < height; y += 1)
     for (let x = 0; x < width; x += 1) {
       const offset = (y * width + x) * 4;
@@ -558,17 +549,20 @@ export function samplePixelTiles(
       ]) {
         if (next[0] < 0 || next[0] >= width || next[1] < 0 || next[1] >= height)
           continue;
-        const neighbor = (next[1] * width + next[0]) * 4;
         contrast = Math.max(
           contrast,
-          Math.hypot(
-            averages[offset] - averages[neighbor],
-            averages[offset + 1] - averages[neighbor + 1],
-            averages[offset + 2] - averages[neighbor + 2],
-          ),
+          colorDistance(labs[y * width + x], labs[next[1] * width + next[0]]),
         );
       }
-      if (contrast >= 42)
+      const dominantLab = rgbToLab([
+        dominants[offset],
+        dominants[offset + 1],
+        dominants[offset + 2],
+      ]);
+      if (
+        contrast >= 9
+        && colorDistance(labs[y * width + x], dominantLab) >= 1.5
+      )
         result.set(dominants.slice(offset, offset + 4), offset);
     }
   return result;
@@ -581,8 +575,8 @@ function sampleSource(
   mode: ProcessingMode,
 ) {
   const canvas = document.createElement("canvas");
-  canvas.width = width * 4;
-  canvas.height = height * 4;
+  canvas.width = width * 8;
+  canvas.height = height * 8;
   const context = canvas.getContext("2d", { willReadFrequently: true });
   if (!context) throw new Error("当前浏览器无法处理图片，请更新浏览器后重试。");
   context.imageSmoothingEnabled = true;

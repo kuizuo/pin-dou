@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BEAD_COLORS,
   beadById,
+  colorDistance,
   createSamplePattern,
   labDistance,
   nearestBead,
@@ -32,11 +33,21 @@ describe("MARD 图纸核心处理", () => {
     expect(nearestBead({ r: 2, g: 2, b: 2 }).id).toBe("H7");
   });
 
+  it("人眼色差计算符合标准样例", () => {
+    expect(colorDistance([50, 2.6772, -79.7751], [50, 0, -82.7485])).toBeCloseTo(
+      2.0425,
+      3,
+    );
+  });
+
   it("白色豆和空白格不会混在一起", () => {
     const pixels = new Uint8ClampedArray([
       255, 255, 255, 255, 255, 255, 255, 0,
     ]);
     expect(imageDataToCells(pixels, 2, 1, 8)).toEqual(["T1", null]);
+    expect(imageDataToCells(new Uint8ClampedArray(16), 2, 2, 8)).toEqual(
+      Array(4).fill(null),
+    );
   });
 
   it("只按最外圈有豆区域计算实际图案尺寸", () => {
@@ -60,6 +71,25 @@ describe("MARD 图纸核心处理", () => {
     const cells = imageDataToCells(pixels, 2, 2, 2, "edge");
     expect(new Set(cells.filter(Boolean)).size).toBeLessThanOrEqual(2);
     expect(cells).toHaveLength(4);
+  });
+
+  it("限制颜色数量时保留面积较小但明显不同的颜色", () => {
+    const pixels = new Uint8ClampedArray([
+      ...Array(80).fill([...beadById("T1").rgb, 255]),
+      ...Array(15).fill([...beadById("H9").rgb, 255]),
+      ...Array(5).fill([...beadById("F4").rgb, 255]),
+    ].flat());
+    const cells = imageDataToCells(
+      pixels,
+      10,
+      10,
+      2,
+      "average",
+      [beadById("T1"), beadById("H9"), beadById("F4")],
+      0,
+    );
+    expect(cells).toContain("F4");
+    expect(new Set(cells).size).toBe(2);
   });
 
   it("轮廓增强会保留眼睛和高光这类小而明显的细节", () => {
@@ -199,6 +229,33 @@ describe("MARD 图纸核心处理", () => {
     expect(dominant[2]).toBeLessThan(60);
     expect(average[0]).toBeLessThan(dominant[0]);
     expect(average[2]).toBeGreaterThan(dominant[2]);
+  });
+
+  it("中位色取样不会被少量高光和噪点拉偏", () => {
+    const pixels = new Uint8ClampedArray(8 * 8 * 4);
+    for (let index = 0; index < 64; index += 1)
+      pixels.set(
+        index < 48 ? [112, 74, 46, 255] : [255, 255, 255, 255],
+        index * 4,
+      );
+    const dominant = samplePixelTiles(pixels, 1, 1, "dominant"),
+      average = samplePixelTiles(pixels, 1, 1, "average");
+    expect([...dominant.slice(0, 3)]).toEqual([112, 74, 46]);
+    expect(average[0]).toBeGreaterThan(dominant[0]);
+  });
+
+  it("纯色块选择真实主色，不会把多个颜色拼成不存在的颜色", () => {
+    const pixels = new Uint8ClampedArray(4 * 4 * 4),
+      colors = [
+        ...Array(7).fill([240, 20, 20, 255]),
+        ...Array(5).fill([20, 240, 20, 255]),
+        ...Array(4).fill([20, 20, 240, 255]),
+      ];
+    colors.forEach((color, index) => pixels.set(color, index * 4));
+    const dominant = samplePixelTiles(pixels, 1, 1, "dominant");
+    expect(dominant[0]).toBeGreaterThan(220);
+    expect(dominant[1]).toBeLessThan(40);
+    expect(dominant[2]).toBeLessThan(40);
   });
 
   it("边缘增强只在明显轮廓附近切换到主色", () => {

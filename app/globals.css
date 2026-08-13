@@ -881,6 +881,15 @@ svg {
 .pattern-preview-dialog::backdrop {
   background: rgb(38 24 30 / 0.62);
 }
+.processing-mode-guide-dialog {
+  inset: 0;
+  width: min(980px, calc(100% - 24px));
+  height: fit-content;
+  max-height: calc(100dvh - 24px);
+}
+.processing-mode-guide-dialog .pattern-preview-card {
+  height: auto;
+}
 .pattern-preview-card {
   height: 100%;
   border-radius: 18px;

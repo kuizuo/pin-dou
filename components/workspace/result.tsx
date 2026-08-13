@@ -3,6 +3,7 @@
 import {
   Brush,
   Circle,
+  CircleHelp,
   Columns2,
   Download,
   Eraser,
@@ -302,6 +303,106 @@ function PatternComparisonDialog({
   );
 }
 
+const PROCESSING_MODE_GUIDES = [
+  {
+    id: "edge",
+    title: "轮廓增强",
+    description: "平滑零散杂色，同时保留眼睛、鳍线和外轮廓。",
+    suitable: "适合人物、动漫和有清晰轮廓的图片",
+  },
+  {
+    id: "average",
+    title: "自然平均",
+    description: "保留原图的渐变、光影和柔和过渡，画面更接近原图。",
+    suitable: "适合照片、写实插画和有丰富明暗的图片",
+  },
+  {
+    id: "dominant",
+    title: "纯色块",
+    description: "每格选择主要颜色，减少细碎变化，色块更整齐。",
+    suitable: "适合图标、像素画和扁平风格图片",
+  },
+] as const;
+
+function ProcessingModeGuideDialog({ onClose }: { onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null),
+    returnFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    returnFocus.current = document.activeElement as HTMLElement;
+    dialog.current?.showModal();
+    return () => returnFocus.current?.focus();
+  }, []);
+  return (
+    <dialog
+      ref={dialog}
+      className="pattern-preview-dialog processing-mode-guide-dialog"
+      aria-labelledby="processing-mode-guide-title"
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      onMouseDown={event => event.target === event.currentTarget && onClose()}
+    >
+      <div className="pattern-preview-card max-h-[88dvh]">
+        <div className="pattern-preview-heading">
+          <div>
+            <h2 id="processing-mode-guide-title">三种处理模式有什么不同？</h2>
+            <p>同一张图片、相同格数和颜色数量下的效果对比</p>
+          </div>
+          <Button
+            className="pattern-preview-close"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="关闭处理模式说明"
+            onClick={onClose}
+          >
+            <X />
+          </Button>
+        </div>
+        <div className="grid min-h-0 grid-cols-4 items-start gap-3 overflow-auto overscroll-contain bg-muted p-4 max-[720px]:grid-flow-col max-[720px]:grid-cols-none max-[720px]:auto-cols-[min(76vw,280px)] max-[720px]:snap-x max-[720px]:snap-mandatory max-[720px]:p-3">
+          <figure className="m-0 overflow-hidden rounded-xl border border-border bg-card max-[720px]:snap-start">
+            <img
+              className="aspect-square w-full border-b border-border object-cover"
+              src="/help/processing-mode-source.png"
+              alt="三种处理模式使用的原图"
+            />
+            <figcaption className="grid gap-1.5 p-3">
+              <strong className="text-sm">原图</strong>
+              <span className="text-xs leading-relaxed text-muted-foreground">
+                单主体卡通图，包含渐变、宽色带和少量高对比细节。
+              </span>
+              <small className="mt-1 text-[0.68rem] leading-relaxed font-semibold text-foreground">
+                三种模式均使用这张图和相同设置
+              </small>
+            </figcaption>
+          </figure>
+          {PROCESSING_MODE_GUIDES.map(item => (
+            <figure
+              key={item.id}
+              className="m-0 overflow-hidden rounded-xl border border-border bg-card max-[720px]:snap-start"
+            >
+              <img
+                className="aspect-square w-full border-b border-border object-cover [image-rendering:pixelated]"
+                src={`/help/processing-mode-${item.id}.png`}
+                alt={`${item.title}处理效果示例`}
+              />
+              <figcaption className="grid gap-1.5 p-3">
+                <strong className="text-sm">{item.title}</strong>
+                <span className="text-xs leading-relaxed text-muted-foreground">
+                  {item.description}
+                </span>
+                <small className="mt-1 text-[0.68rem] leading-relaxed font-semibold text-foreground">
+                  {item.suitable}
+                </small>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </dialog>
+  );
+}
+
 function ToolColorProperties({
   selected,
   colors,
@@ -404,7 +505,8 @@ export function Result({
   const [versionName, setVersionName] = useState(""),
     [colorQuery, setColorQuery] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false),
-    [deleting, setDeleting] = useState(false);
+    [deleting, setDeleting] = useState(false),
+    [processingGuideOpen, setProcessingGuideOpen] = useState(false);
   const canvasRef = useRef<HTMLElement>(null),
     fitTarget = useRef<HTMLDivElement>(null),
     transformRef = useRef<ReactZoomPanPinchRef>(null);
@@ -1602,7 +1704,19 @@ export function Result({
                     </small>
                   </label>
                   <fieldset>
-                    <legend>处理模式</legend>
+                    <legend>
+                      处理模式
+                      <Button
+                        className="float-right -mt-1 min-h-6! text-muted-foreground"
+                        variant="ghost"
+                        size="xs"
+                        aria-label="查看处理模式说明"
+                        onClick={() => setProcessingGuideOpen(true)}
+                      >
+                        说明
+                        <CircleHelp />
+                      </Button>
+                    </legend>
                     <div className="panel-processing-modes max-[641px]:[&_button]:min-h-[52px]!">
                       {(
                         [
@@ -1862,6 +1976,11 @@ export function Result({
           current={comparison.current}
           name={pattern.name}
           onClose={() => setComparison(null)}
+        />
+      )}
+      {processingGuideOpen && (
+        <ProcessingModeGuideDialog
+          onClose={() => setProcessingGuideOpen(false)}
         />
       )}
     </main>
