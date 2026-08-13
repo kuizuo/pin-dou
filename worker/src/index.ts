@@ -191,7 +191,7 @@ async function pixelize(request: Request, env: Env, origin: string) {
     );
     if (isFreeQuotaError(error))
       return jsonError(
-        "今日 Cloudflare AI 免费额度已用完，已停止生成，不会产生额外费用。请明天再试，或改用 Gemini。",
+        "今日 Cloudflare AI 免费额度已用完，已停止生成，不会产生额外费用。请明天再试，或改用 GPT Image。",
         429,
         origin,
         FREE_QUOTA_CODE,

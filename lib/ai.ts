@@ -10,8 +10,14 @@ export type AiStyleFailure = {
   message: string;
   code?: string;
 };
-export type AiProvider = "cloudflare" | "gemini";
+export type AiProvider = "cloudflare" | "gemini" | "openai";
 export type AiRequest = { provider: AiProvider; credential: string };
+
+export const AI_PROVIDER_NAMES: Record<AiProvider, string> = {
+  cloudflare: "Cloudflare AI",
+  gemini: "Gemini",
+  openai: "GPT Image",
+};
 
 function blobAsDataUrl(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
@@ -170,15 +176,15 @@ export async function generatePixelStyle(
 ) {
   if (!request.credential.trim())
     throw new Error(
-      request.provider === "gemini"
-        ? "请填写 Gemini API Key。"
-        : "请先完成安全验证。",
+      request.provider === "cloudflare"
+        ? "请先完成安全验证。"
+        : `请填写 ${request.provider === "gemini" ? "Gemini" : "OpenAI"} API Key。`,
     );
   onProgress?.("正在准备图片…");
   const input = await compactImage(dataUrl);
   const form = new FormData();
   form.set("image", input.blob, "source.jpg");
-  if (request.provider === "gemini")
+  if (request.provider !== "cloudflare")
     form.set("apiKey", request.credential.trim());
   else {
     form.set("turnstileToken", request.credential);
@@ -186,12 +192,13 @@ export async function generatePixelStyle(
     form.set("height", String(input.height));
   }
   onProgress?.(
-    `${request.provider === "gemini" ? "Gemini" : "Cloudflare AI"} 正在进行像素化处理…`,
+    `${AI_PROVIDER_NAMES[request.provider]} 正在进行像素化处理…`,
   );
-  const endpoint
-    = request.provider === "gemini"
-      ? "/api/gemini/image"
-      : process.env.NEXT_PUBLIC_PIXEL_WORKER_URL;
+  const endpoint = {
+    cloudflare: process.env.NEXT_PUBLIC_PIXEL_WORKER_URL,
+    gemini: "/api/gemini/image",
+    openai: "/api/openai/image",
+  }[request.provider];
   if (!endpoint) throw new Error("Cloudflare AI 尚未配置。");
   const response = await fetch(endpoint, {
     method: "POST",

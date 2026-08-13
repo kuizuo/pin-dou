@@ -41,6 +41,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { AI_PROVIDER_NAMES } from "@/lib/ai";
 import { fitPreviewSize, renderSourcePreview } from "@/lib/pattern";
 import { DEFAULT_TRANSFORM } from "@/lib/types";
 
@@ -371,7 +372,7 @@ function VariantCard({
                   className="max-[901px]:col-span-full! max-[901px]:w-full! max-[641px]:col-auto! max-[641px]:w-auto! max-[641px]:px-2.5!"
                   onClick={onQuotaFallback}
                 >
-                  改用 Gemini
+                  改用 GPT Image
                 </Button>
               )
             : (
@@ -406,6 +407,8 @@ export function Prepare({
   onAiProviderChange,
   geminiKey,
   onGeminiKeyChange,
+  openaiKey,
+  onOpenaiKeyChange,
   onChooseCandidate,
   onRetry,
   onSwitchSample,
@@ -426,6 +429,8 @@ export function Prepare({
   onAiProviderChange: (provider: AiProvider) => void;
   geminiKey: string;
   onGeminiKeyChange: (value: string) => void;
+  openaiKey: string;
+  onOpenaiKeyChange: (value: string) => void;
   onChooseCandidate: (candidate: AiStyleCandidate) => void;
   onRetry: (request: AiRequest) => void;
   onSwitchSample?: () => void;
@@ -450,12 +455,11 @@ export function Prepare({
     onModeChange(mode);
   }
   function runAi(action: (request: AiRequest) => void) {
-    const credential
-      = aiProvider === "gemini"
-        ? geminiKey.trim()
-        : Date.now() - turnstileTime.current < 290_000
-          ? turnstileToken
-          : "";
+    const credential = aiProvider === "cloudflare"
+      ? Date.now() - turnstileTime.current < 290_000
+        ? turnstileToken
+        : ""
+      : (aiProvider === "gemini" ? geminiKey : openaiKey).trim();
     if (!credential) return setAiSettingsOpen(true);
     action({ provider: aiProvider, credential });
     if (aiProvider === "cloudflare") {
@@ -619,7 +623,7 @@ export function Prepare({
                 type="button"
                 variant="outline"
                 size="icon-sm"
-                aria-label={`AI 设置，当前使用${aiProvider === "gemini" ? " Gemini" : " Cloudflare"}`}
+                aria-label={`AI 设置，当前使用 ${AI_PROVIDER_NAMES[aiProvider]}`}
                 onClick={() => setAiSettingsOpen(true)}
               >
                 <Settings />
@@ -662,7 +666,7 @@ export function Prepare({
               onOpenSettings={() => setAiSettingsOpen(true)}
               onPreview={setPreviewSrc}
               onQuotaFallback={() => {
-                onAiProviderChange("gemini");
+                onAiProviderChange("openai");
                 setAiSettingsOpen(true);
               }}
               onRetry={() => runAi(onRetry)}
@@ -681,8 +685,10 @@ export function Prepare({
       )}
       <AiSettingsDialog
         geminiKey={geminiKey}
+        openaiKey={openaiKey}
         onClose={() => setAiSettingsOpen(false)}
         onGeminiKeyChange={onGeminiKeyChange}
+        onOpenaiKeyChange={onOpenaiKeyChange}
         onProviderChange={onAiProviderChange}
         onTurnstileToken={(token) => {
           turnstileTime.current = token ? Date.now() : 0;

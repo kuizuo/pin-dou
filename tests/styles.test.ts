@@ -89,14 +89,17 @@ describe("统一图纸工作台", () => {
     expect(prepare).toContain("mb-3.5 flex min-h-[58px]");
   });
 
-  it("Cloudflare 与 Gemini 都在 AI 设置弹窗中，密钥不挤占主界面", () => {
+  it("三个 AI 服务都在设置弹窗中，密钥不挤占主界面", () => {
     expect(aiSettings).toContain("Cloudflare AI");
     expect(aiSettings).toContain("Gemini API Key");
+    expect(aiSettings).toContain("GPT Image 2");
+    expect(aiSettings).toContain("OpenAI API Key");
     expect(aiSettings).toContain("保存在当前浏览器");
     expect(aiSettings).toContain("不会写入作品或备份");
     expect(aiSettings).toContain("AI 只做像素化并尽量保留原图颜色");
     expect(prepare).not.toContain("AI 只做像素化并尽量保留原图颜色");
     expect(aiSettings).toContain("hidden={provider !== \"cloudflare\"}");
+    expect(aiSettings).toContain("hidden={provider !== \"openai\"}");
     expect(turnstile).toContain("\"appearance\": \"always\"");
     expect(turnstile).toContain("window.turnstile?.reset(widgetId)");
     expect(aiSettings).toContain("active={open}");
@@ -116,6 +119,15 @@ describe("统一图纸工作台", () => {
     expect(workspace).toContain("window.localStorage.setItem(GEMINI_KEY_STORAGE_KEY, value)");
     expect(workspace).toContain("window.localStorage.removeItem(GEMINI_KEY_STORAGE_KEY)");
     expect(workspace).toContain("onGeminiKeyChange={rememberGeminiKey}");
+  });
+
+  it("OpenAI 密钥保存在当前浏览器，清空后删除", () => {
+    expect(workspace).toContain("OPENAI_KEY_STORAGE_KEY");
+    expect(workspace).toContain("savedOpenaiKey");
+    expect(workspace).toContain("window.localStorage.getItem(OPENAI_KEY_STORAGE_KEY)");
+    expect(workspace).toContain("window.localStorage.setItem(OPENAI_KEY_STORAGE_KEY, value)");
+    expect(workspace).toContain("window.localStorage.removeItem(OPENAI_KEY_STORAGE_KEY)");
+    expect(workspace).toContain("onOpenaiKeyChange={rememberOpenaiKey}");
   });
 
   it("移除独立编辑页，把查看和编辑放在同一画布", () => {
@@ -359,7 +371,7 @@ describe("统一图纸工作台", () => {
     expect(prepare).toContain("<span className=\"eyebrow\">AI 图片处理</span>");
     expect(prepare).toContain("? \"正在处理图片\"");
     expect(prepare).toContain("今日免费额度已用完");
-    expect(prepare).toContain("改用 Gemini");
+    expect(prepare).toContain("改用 GPT Image");
     expect(prepare).not.toContain("正在为你整理图纸");
     expect(workspace).toContain("图片处理完成，请确认效果");
     const regenerate = prepare.indexOf("onClick={onRetry}");

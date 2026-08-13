@@ -8,6 +8,7 @@ import {
   EyeOff,
   KeyRound,
   Sparkles,
+  WandSparkles,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -22,6 +23,8 @@ export function AiSettingsDialog({
   onProviderChange,
   geminiKey,
   onGeminiKeyChange,
+  openaiKey,
+  onOpenaiKeyChange,
   turnstileToken,
   onTurnstileToken,
   turnstileRefresh,
@@ -32,6 +35,8 @@ export function AiSettingsDialog({
   onProviderChange: (provider: AiProvider) => void;
   geminiKey: string;
   onGeminiKeyChange: (value: string) => void;
+  openaiKey: string;
+  onOpenaiKeyChange: (value: string) => void;
   turnstileToken: string;
   onTurnstileToken: (value: string) => void;
   turnstileRefresh: number;
@@ -42,8 +47,9 @@ export function AiSettingsDialog({
     if (open && !dialog.current?.open) dialog.current?.showModal();
     if (!open && dialog.current?.open) dialog.current.close();
   }, [open]);
-  const ready
-    = provider === "gemini" ? Boolean(geminiKey.trim()) : Boolean(turnstileToken);
+  const ready = provider === "cloudflare"
+    ? Boolean(turnstileToken)
+    : Boolean((provider === "gemini" ? geminiKey : openaiKey).trim());
   return (
     <dialog
       ref={dialog}
@@ -66,7 +72,7 @@ export function AiSettingsDialog({
               选择处理服务
             </h2>
             <p className="m-0 text-[0.72rem] text-muted-foreground">
-              Cloudflare 可直接使用；Gemini 使用你自己的密钥。
+              Cloudflare 可直接使用；Gemini 和 GPT Image 使用你自己的密钥。
             </p>
           </div>
           <Button
@@ -83,7 +89,7 @@ export function AiSettingsDialog({
           AI 只做像素化并尽量保留原图颜色；图片仅用于本次生成。
         </p>
         <div
-          className="grid grid-cols-2 gap-2.5 max-[640px]:grid-cols-1"
+          className="grid grid-cols-3 gap-2.5 max-[640px]:grid-cols-1"
           role="group"
           aria-label="AI 处理服务"
         >
@@ -112,6 +118,19 @@ export function AiSettingsDialog({
               <small>使用你的 Gemini API Key</small>
             </span>
             {provider === "gemini" && <Check />}
+          </button>
+          <button
+            className="grid min-h-[82px]! grid-cols-[24px_minmax(0,1fr)_18px] items-center gap-[9px] rounded-[13px] border border-border bg-muted p-[13px] text-left text-foreground aria-pressed:border-primary aria-pressed:bg-accent aria-pressed:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary),transparent_35%)] [&>svg]:w-5 [&>svg]:text-primary [&>svg:last-child]:w-4 [&_small]:mt-[3px] [&_small]:block [&_small]:text-[0.63rem] [&_small]:leading-[1.35] [&_small]:text-muted-foreground [&_strong]:block"
+            type="button"
+            aria-pressed={provider === "openai"}
+            onClick={() => onProviderChange("openai")}
+          >
+            <WandSparkles />
+            <span>
+              <strong>GPT Image 2</strong>
+              <small>使用你的 OpenAI API Key</small>
+            </span>
+            {provider === "openai" && <Check />}
           </button>
         </div>
         <div
@@ -174,6 +193,54 @@ export function AiSettingsDialog({
             密钥保存在当前浏览器，下次可直接使用；不会写入作品或备份。
           </small>
         </div>
+        <div
+          className="ai-provider-credentials"
+          hidden={provider !== "openai"}
+        >
+          <label
+            className="flex items-center justify-between gap-2.5 text-[0.7rem] font-extrabold"
+            htmlFor="openai-key"
+          >
+            <span className="inline-flex items-center gap-[5px] [&_svg]:size-3.5">
+              <KeyRound />
+              OpenAI API Key
+            </span>
+            <a
+              className="inline-flex items-center gap-[5px] whitespace-nowrap text-primary no-underline [&_svg]:size-3.5"
+              href="https://platform.openai.com/api-keys"
+              target="_blank"
+              rel="noreferrer"
+            >
+              获取密钥
+              <ExternalLink />
+            </a>
+          </label>
+          <div className="relative">
+            <input
+              className="h-[42px] w-full rounded-[9px] border border-border bg-card py-0 pr-[42px] pl-[11px] text-[0.74rem] text-foreground outline-none focus-visible:border-primary focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--primary),transparent_82%)]"
+              id="openai-key"
+              type={keyVisible ? "text" : "password"}
+              value={openaiKey}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="粘贴你的 OpenAI API Key"
+              onChange={event => onOpenaiKeyChange(event.target.value)}
+            />
+            <Button
+              className="absolute top-1 right-1 min-h-[34px] min-w-[34px]"
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={keyVisible ? "隐藏密钥" : "显示密钥"}
+              onClick={() => setKeyVisible(value => !value)}
+            >
+              {keyVisible ? <EyeOff /> : <Eye />}
+            </Button>
+          </div>
+          <small>
+            密钥保存在当前浏览器，下次可直接使用；不会写入作品或备份。
+          </small>
+        </div>
         <footer className="flex justify-end">
           <Button
             className="min-w-[108px]!"
@@ -181,7 +248,7 @@ export function AiSettingsDialog({
             disabled={!ready}
             onClick={onClose}
           >
-            {ready ? "完成" : provider === "gemini" ? "请填写密钥" : "等待验证"}
+            {ready ? "完成" : provider === "cloudflare" ? "等待验证" : "请填写密钥"}
           </Button>
         </footer>
       </div>

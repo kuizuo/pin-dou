@@ -43,7 +43,7 @@ describe("AI 图片尺寸", () => {
     ]);
   });
 
-  it("Cloudflare 与 Gemini 都明确生成拼豆用粗像素稿", () => {
+  it("三个 AI 服务共用拼豆粗像素稿要求", () => {
     const worker = readFileSync(
       new URL("../worker/src/index.ts", import.meta.url),
       "utf8",

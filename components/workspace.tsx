@@ -68,6 +68,7 @@ type SampleImage = { name: string; src: string };
 
 const GENERATION_MODE_KEY = "pindou-generation-mode-v1";
 const GEMINI_KEY_STORAGE_KEY = "pindou-gemini-key-v1";
+const OPENAI_KEY_STORAGE_KEY = "pindou-openai-key-v1";
 
 function savedGenerationMode(): GenerationMode {
   if (typeof window === "undefined") return DEFAULT_SETTINGS.mode;
@@ -91,6 +92,16 @@ function savedGeminiKey() {
   }
 }
 
+function savedOpenaiKey() {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(OPENAI_KEY_STORAGE_KEY) || "";
+  }
+  catch {
+    return "";
+  }
+}
+
 export function Workspace({
   initialProjectId,
   initialStage = "home",
@@ -106,6 +117,7 @@ export function Workspace({
   const [preferredMode, setPreferredMode] = useState(savedGenerationMode);
   const [aiProvider, setAiProvider] = useState<AiProvider>("cloudflare");
   const [geminiKey, setGeminiKey] = useState(savedGeminiKey);
+  const [openaiKey, setOpenaiKey] = useState(savedOpenaiKey);
   const [aiCandidates, setAiCandidates] = useState<AiStyleCandidate[]>([]);
   const [aiFailures, setAiFailures] = useState<AiStyleFailure[]>([]);
   const [samples, setSamples] = useState<SampleImage[]>([]);
@@ -218,6 +230,15 @@ export function Workspace({
     try {
       if (value) window.localStorage.setItem(GEMINI_KEY_STORAGE_KEY, value);
       else window.localStorage.removeItem(GEMINI_KEY_STORAGE_KEY);
+    }
+    catch { /* private browsing or storage restrictions keep the current session working */ }
+  }
+
+  function rememberOpenaiKey(value: string) {
+    setOpenaiKey(value);
+    try {
+      if (value) window.localStorage.setItem(OPENAI_KEY_STORAGE_KEY, value);
+      else window.localStorage.removeItem(OPENAI_KEY_STORAGE_KEY);
     }
     catch { /* private browsing or storage restrictions keep the current session working */ }
   }
@@ -538,11 +559,13 @@ export function Workspace({
           draft={draft}
           failures={aiFailures}
           geminiKey={geminiKey}
+          openaiKey={openaiKey}
           message={message}
           onAiProviderChange={setAiProvider}
           onFile={file => void chooseFile(file)}
           onChooseCandidate={candidate => void chooseAiCandidate(candidate)}
           onGeminiKeyChange={rememberGeminiKey}
+          onOpenaiKeyChange={rememberOpenaiKey}
           onGenerate={request => void generate(request)}
           onModeChange={rememberGenerationMode}
           onReturnToImage={() => {
