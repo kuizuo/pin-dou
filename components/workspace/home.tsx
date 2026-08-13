@@ -67,7 +67,8 @@ function UploadCard({
   onFile: (file?: File) => void;
   onSample: () => void;
 }) {
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<HTMLInputElement>(null),
+    [dragging, setDragging] = useState(false);
   return (
     <div
       className={cn(
@@ -84,13 +85,28 @@ function UploadCard({
         onChange={event => onFile(event.target.files?.[0])}
       />
       <button
-        className="flex min-h-[245px]! flex-1 cursor-pointer flex-col items-center justify-center gap-2.5 rounded-2xl border-2 border-dashed border-[#64738a] bg-workbench-raised text-inherit hover:border-primary"
+        className="flex min-h-[245px]! flex-1 cursor-pointer flex-col items-center justify-center gap-2.5 rounded-2xl border-2 border-dashed border-[#64738a] bg-workbench-raised text-inherit hover:border-primary data-[dragging=true]:border-primary data-[dragging=true]:bg-[#2b3950] data-[dragging=true]:shadow-[inset_0_0_0_3px_rgb(238_51_145/18%)]"
+        type="button"
+        data-dragging={dragging}
         onClick={() => input.current?.click()}
+        onDragEnter={(event) => {
+          event.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDragOver={event => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          setDragging(false);
+          onFile(event.dataTransfer.files[0]);
+        }}
       >
         <span className="grid size-[62px] place-items-center rounded-[18px] bg-primary text-white">
           <Camera size={30} />
         </span>
-        <strong className="text-[1.1rem]">拍照或选择图片</strong>
+        <strong className="text-[1.1rem]">
+          {dragging ? "松开即可上传" : "拍照或选择图片"}
+        </strong>
         <small className="text-center text-workbench-muted">
           JPG、PNG、WebP、HEIC · 不超过 10MB
         </small>

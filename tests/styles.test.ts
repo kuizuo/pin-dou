@@ -345,6 +345,14 @@ describe("统一图纸工作台", () => {
     expect(prepare).toContain("max-[641px]:size-11!");
   });
 
+  it("首页和裁切区支持拖入图片，替换前需要确认", () => {
+    expect(home).toContain("松开即可上传");
+    expect(home).toContain("event.dataTransfer.files[0]");
+    expect(prepare).toContain("松开即可替换图片");
+    expect(prepare).toContain("替换当前图片？");
+    expect(prepare).toContain("确认替换");
+  });
+
   it("离开前保护未应用调整，并保持浅色顶栏", () => {
     expect(workspace).toContain("还有未应用的调整");
     expect(workspace).toContain("放弃并离开");

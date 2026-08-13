@@ -29,6 +29,16 @@ import type {
 } from "@/lib/ai";
 import type { GenerationSettings, SourceTransform } from "@/lib/types";
 import { AiSettingsDialog } from "@/components/ai-settings-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { fitPreviewSize, renderSourcePreview } from "@/lib/pattern";
 import { DEFAULT_TRANSFORM } from "@/lib/types";
@@ -43,10 +53,12 @@ export type Draft = {
 function CropPreview({
   aspect,
   draft,
+  onReplaceFile,
   setDraft,
 }: {
   aspect?: number;
   draft: Draft;
+  onReplaceFile: (file?: File) => void;
   setDraft: (draft: Draft) => void;
 }) {
   const { transform } = draft,
@@ -58,6 +70,7 @@ function CropPreview({
       height: number;
     } | null>(null),
     [frame, setFrame] = useState({ width: 0, height: 0 }),
+    [dragging, setDragging] = useState(false),
     draftRef = useRef(draft),
     setDraftRef = useRef(setDraft);
   const crop: PercentCrop = {
@@ -168,6 +181,19 @@ function CropPreview({
       className="relative grid h-[min(66dvh,720px)] min-h-[440px] place-items-center overflow-hidden bg-[#f8f3f5] [background-image:linear-gradient(45deg,#eee5e8_25%,transparent_25%),linear-gradient(-45deg,#eee5e8_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#eee5e8_75%),linear-gradient(-45deg,transparent_75%,#eee5e8_75%)] [background-position:0_0,0_12px,12px_-12px,-12px_0] [background-size:24px_24px] max-[901px]:h-[min(58dvh,590px)] max-[901px]:min-h-[400px] max-[641px]:h-[48dvh] max-[641px]:min-h-80"
       role="group"
       aria-label="图片裁切区域"
+      onDragEnter={(event) => {
+        event.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={event =>
+        !event.currentTarget.contains(event.relatedTarget as Node)
+        && setDragging(false)}
+      onDragOver={event => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        setDragging(false);
+        onReplaceFile(event.dataTransfer.files[0]);
+      }}
     >
       {preview && frame.width
         ? (
@@ -207,6 +233,11 @@ function CropPreview({
       <span className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-lg bg-[rgb(15_23_38/0.8)] px-2.5 py-1.5 text-[0.68rem] whitespace-nowrap text-white">
         拖动裁切框移动 · 拉动边角调整大小
       </span>
+      {dragging && (
+        <div className="pointer-events-none absolute inset-3 z-20 grid place-items-center rounded-[18px] border-2 border-dashed border-primary bg-[rgb(24_34_53/0.82)] text-base font-extrabold text-white backdrop-blur-sm">
+          松开即可替换图片
+        </div>
+      )}
     </div>
   );
 }
@@ -386,6 +417,7 @@ export function Prepare({
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false),
     [previewSrc, setPreviewSrc] = useState(""),
     [cropAspect, setCropAspect] = useState<number>(),
+    [replacementFile, setReplacementFile] = useState<File | null>(null),
     [turnstileToken, setTurnstileToken] = useState(""),
     [turnstileRefresh, setTurnstileRefresh] = useState(0);
   const uploadInput = useRef<HTMLInputElement>(null);
@@ -413,7 +445,7 @@ export function Prepare({
             hidden
             accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
             onChange={(event) => {
-              onFile(event.target.files?.[0]);
+              setReplacementFile(event.target.files?.[0] || null);
               event.target.value = "";
             }}
           />
@@ -476,6 +508,7 @@ export function Prepare({
           <CropPreview
             aspect={cropAspect}
             draft={draft}
+            onReplaceFile={file => setReplacementFile(file || null)}
             setDraft={setDraft}
           />
           <div className="flex min-h-[86px] items-center justify-between gap-[18px] border-t border-border p-3 max-[901px]:flex-col max-[901px]:items-stretch max-[641px]:gap-3">
@@ -621,6 +654,31 @@ export function Prepare({
         turnstileRefresh={turnstileRefresh}
         turnstileToken={turnstileToken}
       />
+      <AlertDialog
+        open={Boolean(replacementFile)}
+        onOpenChange={open => !open && setReplacementFile(null)}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>替换当前图片？</AlertDialogTitle>
+            <AlertDialogDescription>
+              替换后，当前裁切、旋转、翻转和生成结果都会重置。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const file = replacementFile;
+                setReplacementFile(null);
+                onFile(file || undefined);
+              }}
+            >
+              确认替换
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {previewSrc && (
         <AiPreviewDialog
           src={previewSrc}
