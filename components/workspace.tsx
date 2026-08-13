@@ -389,6 +389,7 @@ export function Workspace({
       if (aiRunRef.current !== run) return;
       setAiFailures([
         {
+          code: (error as Error & { code?: string }).code,
           variant: "pixel",
           message: error instanceof Error ? error.message : "生成失败",
         },

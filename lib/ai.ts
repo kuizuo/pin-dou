@@ -5,7 +5,11 @@ export type AiStyleCandidate = {
   image: string;
   originalImage: string;
 };
-export type AiStyleFailure = { variant: AiVariant; message: string };
+export type AiStyleFailure = {
+  variant: AiVariant;
+  message: string;
+  code?: string;
+};
 export type AiProvider = "cloudflare" | "gemini";
 export type AiRequest = { provider: AiProvider; credential: string };
 
@@ -197,8 +201,12 @@ export async function generatePixelStyle(
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as {
       error?: string;
+      code?: string;
     };
-    throw new Error(payload.error || `AI 图片处理失败（${response.status}）。`);
+    throw Object.assign(
+      new Error(payload.error || `AI 图片处理失败（${response.status}）。`),
+      { code: payload.code },
+    );
   }
   const generatedImage = await blobAsDataUrl(await response.blob());
   onProgress?.("正在按原图校准颜色…");

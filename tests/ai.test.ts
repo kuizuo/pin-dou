@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PIXEL_ART_PROMPT } from "../app/api/gemini/image/route";
 import { aiOutputSize, restoreSourceColors } from "../lib/ai";
+import { isFreeQuotaError } from "../worker/src/index";
 
 describe("AI 图片尺寸", () => {
   it("保留横竖比例并使用模型稳定支持的尺寸", () => {
@@ -49,5 +50,13 @@ describe("AI 图片尺寸", () => {
       expect(prompt).not.toContain("#ff00ff");
       expect(prompt).not.toContain("#FFFFFF");
     }
+  });
+
+  it("只把免费额度或费用上限识别为额度耗尽", () => {
+    expect(isFreeQuotaError(new Error("Workers AI error 3036"))).toBe(true);
+    expect(isFreeQuotaError(new Error("AI Gateway spend limit reached"))).toBe(
+      true,
+    );
+    expect(isFreeQuotaError(new Error("Failed to fetch"))).toBe(false);
   });
 });

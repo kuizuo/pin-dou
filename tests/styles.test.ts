@@ -336,7 +336,8 @@ describe("统一图纸工作台", () => {
   it("AI 处理文案说明正在处理图片，成功后可重新生成", () => {
     expect(prepare).toContain("<span className=\"eyebrow\">AI 图片处理</span>");
     expect(prepare).toContain("? \"正在处理图片\"");
-    expect(prepare).toContain("const title = \"AI 处理效果\"");
+    expect(prepare).toContain("今日免费额度已用完");
+    expect(prepare).toContain("改用 Gemini");
     expect(prepare).not.toContain("正在为你整理图纸");
     expect(workspace).toContain("图片处理完成，请确认效果");
     const regenerate = prepare.indexOf("onClick={onRetry}");

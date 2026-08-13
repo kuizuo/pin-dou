@@ -2,6 +2,7 @@
 
 import {
   ArrowLeft,
+  CircleAlert,
   Crop as CropIcon,
   FlipHorizontal,
   FlipVertical,
@@ -297,6 +298,7 @@ function VariantCard({
   busy,
   onChoose,
   onPreview,
+  onQuotaFallback,
   onRetry,
 }: {
   candidate?: AiStyleCandidate;
@@ -304,12 +306,14 @@ function VariantCard({
   busy: boolean;
   onChoose: (candidate: AiStyleCandidate) => void;
   onPreview: (src: string) => void;
+  onQuotaFallback: () => void;
   onRetry: () => void;
 }) {
-  const title = "AI 处理效果";
+  const quotaExceeded = failure?.code === "AI_FREE_QUOTA_EXHAUSTED",
+    title = quotaExceeded ? "今日免费额度已用完" : "AI 处理效果";
   return (
     <article
-      className={`grid min-w-0 grid-cols-[140px_minmax(0,1fr)_auto] items-center gap-3 rounded-[15px] border border-border p-2.5 [&_small]:mt-1 [&_small]:block [&_small]:text-[0.67rem] [&_small]:leading-[1.4] [&_small]:text-muted-foreground [&_small]:[overflow-wrap:anywhere] [&_strong]:block max-[901px]:grid-cols-[108px_minmax(0,1fr)] max-[641px]:grid-cols-[82px_minmax(0,1fr)_auto] ${candidate ? "bg-card" : "bg-muted"}`}
+      className={`grid min-w-0 grid-cols-[140px_minmax(0,1fr)_auto] items-center gap-3 rounded-[15px] border p-2.5 [&_small]:mt-1 [&_small]:block [&_small]:text-[0.67rem] [&_small]:leading-[1.4] [&_small]:[overflow-wrap:anywhere] [&_strong]:block max-[901px]:grid-cols-[108px_minmax(0,1fr)] max-[641px]:grid-cols-[82px_minmax(0,1fr)_auto] ${quotaExceeded ? "border-destructive bg-destructive/10 [&_small]:text-destructive [&_strong]:text-destructive" : `border-border [&_small]:text-muted-foreground ${candidate ? "bg-card" : "bg-muted"}`}`}
     >
       {candidate
         ? (
@@ -331,7 +335,11 @@ function VariantCard({
           )
         : (
             <div className="relative grid h-[108px] w-[140px] place-items-center overflow-hidden rounded-[10px] bg-[#eee7e9] text-muted-foreground max-[901px]:w-[108px] max-[641px]:h-[74px] max-[641px]:w-[82px]">
-              {busy ? <LoaderCircle className="spin" /> : <ImageIcon />}
+              {busy
+                ? <LoaderCircle className="spin" />
+                : quotaExceeded
+                  ? <CircleAlert className="text-destructive" />
+                  : <ImageIcon />}
             </div>
           )}
       <div>
@@ -358,15 +366,24 @@ function VariantCard({
             </div>
           )
         : failure
-          ? (
-              <Button
-                className="max-[901px]:col-span-full! max-[901px]:w-full! max-[641px]:col-auto! max-[641px]:w-auto! max-[641px]:px-2.5!"
-                variant="outline"
-                onClick={onRetry}
-              >
-                重试
-              </Button>
-            )
+          ? quotaExceeded
+            ? (
+                <Button
+                  className="max-[901px]:col-span-full! max-[901px]:w-full! max-[641px]:col-auto! max-[641px]:w-auto! max-[641px]:px-2.5!"
+                  onClick={onQuotaFallback}
+                >
+                  改用 Gemini
+                </Button>
+              )
+            : (
+                <Button
+                  className="max-[901px]:col-span-full! max-[901px]:w-full! max-[641px]:col-auto! max-[641px]:w-auto! max-[641px]:px-2.5!"
+                  variant="outline"
+                  onClick={onRetry}
+                >
+                  重试
+                </Button>
+              )
           : null}
     </article>
   );
@@ -417,6 +434,7 @@ export function Prepare({
 }) {
   const { transform, settings } = draft,
     aiMode = settings.mode === "ai",
+    quotaExceeded = failures[0]?.code === "AI_FREE_QUOTA_EXHAUSTED",
     showVariants
       = aiMode && (busy || candidates.length > 0 || failures.length > 0);
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false),
@@ -614,7 +632,9 @@ export function Prepare({
                   ? "正在处理图片"
                   : candidates.length
                     ? "打开大图确认效果"
-                    : "这次没有生成成功"}
+                    : quotaExceeded
+                      ? "今日免费额度已用完"
+                      : "这次没有生成成功"}
               </h2>
             </div>
             {message && (
@@ -631,6 +651,10 @@ export function Prepare({
               busy={busy && !candidates.length}
               onChoose={onChooseCandidate}
               onPreview={setPreviewSrc}
+              onQuotaFallback={() => {
+                onAiProviderChange("gemini");
+                setAiSettingsOpen(true);
+              }}
               onRetry={() => runAi(onRetry)}
             />
           </div>

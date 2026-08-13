@@ -1,4 +1,8 @@
+import type { Env, ExportedHandler } from "../worker-configuration";
+
 const MODEL = "@cf/black-forest-labs/flux-2-klein-4b";
+const GATEWAY = "pin-dou-free";
+const FREE_QUOTA_CODE = "AI_FREE_QUOTA_EXHAUSTED";
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const PROMPT = `Edit input image 0. Apply ONLY a neutral pixelation treatment to the existing image. This is a strict image-to-image conversion, not a redesign, recolor, or enhancement.
@@ -23,13 +27,25 @@ function corsHeaders(origin: string) {
   };
 }
 
-function jsonError(message: string, status: number, origin: string) {
+function jsonError(
+  message: string,
+  status: number,
+  origin: string,
+  code?: string,
+) {
   return Response.json(
-    { error: message },
+    { error: message, ...(code ? { code } : {}) },
     {
       status,
       headers: { ...corsHeaders(origin), "cache-control": "no-store" },
     },
+  );
+}
+
+export function isFreeQuotaError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /\b3036\b|free allocation|spend limit|daily quota|quota exceeded/i.test(
+    message,
   );
 }
 
@@ -139,9 +155,11 @@ async function pixelize(request: Request, env: Env, origin: string) {
     return jsonError("图片请求无法编码。", 400, origin);
 
   try {
-    const output = await env.AI.run(MODEL, {
-      multipart: { body: encoded.body, contentType },
-    });
+    const output = await env.AI.run(
+      MODEL,
+      { multipart: { body: encoded.body, contentType } },
+      { gateway: { id: GATEWAY } },
+    );
     if (!output.image)
       return jsonError("AI 服务没有返回可用图片。", 502, origin);
     const bytes = decodeBase64(output.image);
@@ -172,7 +190,14 @@ async function pixelize(request: Request, env: Env, origin: string) {
         error: error instanceof Error ? error.message : String(error),
       }),
     );
-    return jsonError("AI 智能整理暂时不可用，请稍后重试。", 502, origin);
+    if (isFreeQuotaError(error))
+      return jsonError(
+        "今日 Cloudflare AI 免费额度已用完，已停止生成，不会产生额外费用。请明天再试，或改用 Gemini。",
+        429,
+        origin,
+        FREE_QUOTA_CODE,
+      );
+    return jsonError("AI 图片处理暂时不可用，请稍后重试。", 502, origin);
   }
 }
 
