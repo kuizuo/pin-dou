@@ -425,7 +425,7 @@ export function imageDataToCells(
     throw new Error("图片像素数据不完整。请重新选择图片。");
   const palette = choosePalette(
     pixels,
-    Math.max(1, Math.min(60, maxColors)),
+    Math.max(1, Math.min(30, maxColors)),
     availableColors,
   );
   let cells = Array.from({ length: width * height }, (_, index) => {
@@ -438,7 +438,20 @@ export function imageDataToCells(
       ).id;
   });
   if (processingMode === "edge") cells = cleanSmallRegions(cells, width);
-  return mergeSimilarColors(cells, Math.max(0, Math.min(60, colorMerge)));
+  return mergeSimilarColors(cells, Math.max(0, Math.min(30, colorMerge)));
+}
+
+function toLinear(value: number) {
+  const channel = value / 255;
+  return channel <= 0.04045
+    ? channel / 12.92
+    : ((channel + 0.055) / 1.055) ** 2.4;
+}
+
+function fromLinear(value: number) {
+  return 255 * (value <= 0.0031308
+    ? value * 12.92
+    : 1.055 * value ** (1 / 2.4) - 0.055);
 }
 
 function tileRepresentative(
@@ -463,9 +476,9 @@ function tileRepresentative(
         pixelAlpha = pixels[offset + 3];
       if (pixelAlpha < 12) continue;
       const pixelWeight = pixelAlpha / 255;
-      red += pixels[offset] * pixelWeight;
-      green += pixels[offset + 1] * pixelWeight;
-      blue += pixels[offset + 2] * pixelWeight;
+      red += toLinear(pixels[offset]) * pixelWeight;
+      green += toLinear(pixels[offset + 1]) * pixelWeight;
+      blue += toLinear(pixels[offset + 2]) * pixelWeight;
       alpha += pixelAlpha;
       weight += pixelWeight;
       const bucket
@@ -479,19 +492,19 @@ function tileRepresentative(
         blue: 0,
         alpha: 0,
       };
-      current.count += 1;
-      current.red += pixels[offset];
-      current.green += pixels[offset + 1];
-      current.blue += pixels[offset + 2];
-      current.alpha += pixelAlpha;
+      current.count += pixelWeight;
+      current.red += pixels[offset] * pixelWeight;
+      current.green += pixels[offset + 1] * pixelWeight;
+      current.blue += pixels[offset + 2] * pixelWeight;
+      current.alpha += pixelAlpha * pixelWeight;
       buckets.set(bucket, current);
     }
   if (!weight) return [0, 0, 0, 0] as const;
   if (mode === "average")
     return [
-      Math.round(red / weight),
-      Math.round(green / weight),
-      Math.round(blue / weight),
+      Math.round(fromLinear(red / weight)),
+      Math.round(fromLinear(green / weight)),
+      Math.round(fromLinear(blue / weight)),
       Math.round(alpha / 16),
     ] as const;
   const winner = [...buckets.values()].reduce((best, item) =>

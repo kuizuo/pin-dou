@@ -199,7 +199,7 @@ function AiPreviewDialog({
         <div className="pattern-preview-heading max-[641px]:flex-col! max-[641px]:items-start!">
           <div>
             <h2 id="ai-preview-title">AI 智能图纸预览</h2>
-            <p>检查主体、轮廓和配色，不满意可以返回后重新生成</p>
+            <p>检查像素效果和原图颜色，不满意可以返回后重新生成</p>
           </div>
           <Button
             variant="outline"
@@ -268,7 +268,7 @@ function VariantCard({
           {failure?.message
             || (candidate
               ? "点击图片查看效果，确认后继续生成"
-              : "正在整理主体、轮廓和主要颜色")}
+              : "正在转换为像素风格并保留原图颜色")}
         </small>
       </div>
       {candidate
@@ -485,7 +485,7 @@ export function Prepare({
                 <div className="flex items-center gap-[7px] max-[901px]:w-full max-[901px]:justify-between max-[641px]:contents">
                   <p className="m-0 flex max-w-[430px] items-center gap-1.5 text-[0.68rem] leading-[1.45] text-muted-foreground [&>svg]:w-[17px] [&>svg]:text-primary max-[901px]:max-w-none max-[641px]:col-span-full max-[641px]:row-start-2 max-[641px]:min-w-0 max-[641px]:items-start max-[641px]:px-0.5 max-[641px]:pt-0.5">
                     <WandSparkles />
-                    AI 会整理主体、轮廓和配色；图片仅用于本次生成。
+                    AI 只做像素化并尽量保留原图颜色；图片仅用于本次生成。
                   </p>
                   <Button
                     className="flex-none max-[641px]:col-start-2! max-[641px]:row-start-1! max-[641px]:size-11! max-[641px]:p-0!"

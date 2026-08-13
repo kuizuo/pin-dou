@@ -96,11 +96,11 @@ export const DEFAULT_TRANSFORM: SourceTransform = {
   offsetY: 0,
 };
 export const DEFAULT_SETTINGS: GenerationSettings = {
-  longestEdge: 70,
-  maxColors: 20,
+  longestEdge: 65,
+  maxColors: 12,
   paletteSize: 291,
   excludedColorIds: [],
-  processingMode: "edge",
+  processingMode: "average",
   colorMerge: 5,
   background: "plain",
   mirror: false,

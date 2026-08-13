@@ -317,7 +317,7 @@ export function Workspace({
   async function generateAiVariant(request: AiRequest) {
     if (!draft) return;
     setBusy(true);
-    setMessage("AI 正在整理画面和配色…");
+    setMessage("AI 正在进行像素化处理…");
     setAiCandidates([]);
     setAiFailures([]);
     try {
@@ -361,18 +361,13 @@ export function Workspace({
     const generatedSource = await fetch(candidate.originalImage).then(
       response => response.blob(),
     );
-    const settings = {
-      ...draft.settings,
-      background: "plain" as const,
-      processingMode: "edge" as const,
-    };
+    const settings = draft.settings;
     setDraft({ ...draft, settings });
     await finishGeneration(
       candidate.originalImage,
       settings,
       "ai-pixel",
       generatedSource,
-      candidate.image,
     );
   }
 

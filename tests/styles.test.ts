@@ -194,6 +194,7 @@ describe("统一图纸工作台", () => {
   });
 
   it("下载旁的开关打开设置抽屉", () => {
+    expect(result).toContain("const [panelOpen, setPanelOpen] = useState(true)");
     expect(result).toContain("{ id: \"adjust\", label: \"设置\" }");
     expect(result).toContain("{ id: \"colors\", label: \"颜色\" }");
     expect(result).toContain("{ id: \"versions\", label: \"版本\" }");

@@ -327,7 +327,7 @@ export function Result({
     [shape, setShape] = useState<"square" | "circle">("square");
   const [scale, setScale] = useState(1),
     [spacePanning, setSpacePanning] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(false),
+  const [panelOpen, setPanelOpen] = useState(true),
     [panelTab, setPanelTab] = useState<PanelTab>("adjust");
   const [draftSettings, setDraftSettings] = useState<GenerationSettings>({
     ...project.settings,
@@ -1342,7 +1342,7 @@ export function Result({
                     <input
                       type="range"
                       min="1"
-                      max="60"
+                      max="30"
                       value={draftSettings.maxColors}
                       onChange={event =>
                         scheduleAdjustments({
@@ -1359,7 +1359,7 @@ export function Result({
                     <input
                       type="range"
                       min="0"
-                      max="60"
+                      max="30"
                       value={draftSettings.colorMerge}
                       onChange={event =>
                         scheduleAdjustments({
@@ -1369,7 +1369,7 @@ export function Result({
                     />
                     <small>
                       <span>0 · 保留细节</span>
-                      <span>60 · 大幅简化</span>
+                      <span>30 · 大幅简化</span>
                     </small>
                   </label>
                   <fieldset>
@@ -1377,6 +1377,11 @@ export function Result({
                     <div className="panel-processing-modes max-[641px]:[&_button]:min-h-[52px]!">
                       {(
                         [
+                          {
+                            id: "average",
+                            title: "自然平均",
+                            description: "保留渐变与光影",
+                          },
                           {
                             id: "edge",
                             title: "轮廓增强",
@@ -1386,11 +1391,6 @@ export function Result({
                             id: "dominant",
                             title: "纯色块",
                             description: "每块采用主要颜色",
-                          },
-                          {
-                            id: "average",
-                            title: "自然平均",
-                            description: "保留渐变与光影",
                           },
                         ] as const
                       ).map(item => (

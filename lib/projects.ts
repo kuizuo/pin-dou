@@ -56,6 +56,14 @@ export function normalizeProject(project: Project): Project {
       ...DEFAULT_SETTINGS,
       ...project.settings,
       background,
+      maxColors: Math.min(
+        30,
+        project.settings.maxColors ?? DEFAULT_SETTINGS.maxColors,
+      ),
+      colorMerge: Math.min(
+        30,
+        project.settings.colorMerge ?? DEFAULT_SETTINGS.colorMerge,
+      ),
       excludedColorIds: project.settings.excludedColorIds || [],
     },
     backgroundRemoved: project.backgroundRemoved ?? background !== "keep",

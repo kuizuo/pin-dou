@@ -126,8 +126,10 @@ export async function removePlainBackground(
     canvas.height,
     wand,
   );
-  for (let index = 0; index < mask.length; index += 1)
-    if (mask[index]) output.data[index * 4 + 3] = 0;
+  for (let index = 0; index < mask.length; index += 1) {
+    const offset = index * 4;
+    if (mask[index]) output.data[offset + 3] = 0;
+  }
   context.putImageData(output, 0, 0);
   return canvas.toDataURL("image/png");
 }

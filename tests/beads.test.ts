@@ -87,9 +87,10 @@ describe("MARD 图纸核心处理", () => {
 
   it("MARD 色库档位固定并支持排除色号", () => {
     expect(DEFAULT_SETTINGS.paletteSize).toBe(291);
-    expect(DEFAULT_SETTINGS.longestEdge).toBe(70);
-    expect(DEFAULT_SETTINGS.maxColors).toBe(20);
+    expect(DEFAULT_SETTINGS.longestEdge).toBe(65);
+    expect(DEFAULT_SETTINGS.maxColors).toBe(12);
     expect(DEFAULT_SETTINGS.colorMerge).toBe(5);
+    expect(DEFAULT_SETTINGS.processingMode).toBe("average");
     expect(DEFAULT_SETTINGS.mode).toBe("local");
     expect(DEFAULT_SETTINGS.mirror).toBe(false);
     for (const size of PALETTE_SIZES)
@@ -145,8 +146,29 @@ describe("MARD 图纸核心处理", () => {
       new Set(imageDataToCells(pixels, 2, 1, 2, "average", pair, 0)).size,
     ).toBe(2);
     expect(
-      new Set(imageDataToCells(pixels, 2, 1, 2, "average", pair, 60)).size,
+      new Set(imageDataToCells(pixels, 2, 1, 2, "average", pair, 30)).size,
     ).toBe(1);
+  });
+
+  it("纯色块取样不会被透明边缘杂色带偏", () => {
+    const pixels = new Uint8ClampedArray(4 * 4 * 4);
+    for (let index = 0; index < 16; index += 1)
+      pixels.set(
+        index < 9 ? [240, 30, 30, 255] : [30, 30, 240, 20],
+        index * 4,
+      );
+    const dominant = samplePixelTiles(pixels, 1, 1, "dominant");
+    expect(dominant[0]).toBeGreaterThan(220);
+    expect(dominant[2]).toBeLessThan(60);
+  });
+
+  it("自然平均按真实光亮混色，不会把明暗平均成脏灰", () => {
+    const pixels = new Uint8ClampedArray(4 * 4 * 4);
+    for (let index = 0; index < 16; index += 1)
+      pixels.set(index < 8 ? [0, 0, 0, 255] : [255, 255, 255, 255], index * 4);
+    const average = samplePixelTiles(pixels, 1, 1, "average");
+    expect(average[0]).toBeGreaterThan(180);
+    expect(average[0]).toBeLessThan(195);
   });
 
   it("纯主色与真实平均使用不同的区域取样", () => {

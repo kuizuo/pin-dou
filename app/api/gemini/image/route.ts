@@ -7,13 +7,17 @@ const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export const maxDuration = 120;
 
-export const PIXEL_ART_PROMPT = `Use the supplied image as the only visual reference. Create a clean, faithful preparation image for a fuse-bead pattern.
+export const PIXEL_ART_PROMPT = `Edit the supplied image. Apply ONLY a neutral pixelation treatment to the existing image. This is a strict image-to-image conversion, not a redesign, recolor, or enhancement.
 
-Preserve exactly: the subject's identity, number of subjects, face and expression, pose, proportions, direction, crop, composition, and recognizable high-contrast details. Preserve the original main colors.
+CONTENT LOCK: keep the exact canvas aspect ratio, composition, crop, positions, scale, spacing, subject identity, pose, silhouette, logos, and existing words. Keep every existing element. Render existing words as readable blocky pixel lettering without changing the words.
 
-Simplify only what helps a small grid: replace texture and photographic noise with broad flat color regions, clear closed silhouettes, crisp boundaries, and very limited simple shading. Keep important eyes, facial features, markings, clothing details, and object shapes readable. Use about 12 to 20 visually distinct colors. Do not turn the result into a bead mockup, circular beads, a printed grid, or a low-resolution pixel mosaic; the app will create the final grid afterward.
+BACKGROUND LOCK: keep the original background content, shape, and color. A solid background must remain the same single solid color. Never remove, replace, decorate, extend, or add detail to the background. Do not isolate the subject or create transparency.
 
-Place the complete subject in the center with comfortable padding. Use one perfectly uniform pure white background (#FFFFFF), with no shadow, gradient, texture, scenery, or floor line. Do not add, remove, duplicate, or redesign subjects or objects. No text, letters, numbers, border, frame, watermark, decorations, or new props.`;
+COLOR LOCK: preserve the original colors as closely as possible in every corresponding region, including hue, saturation, brightness, contrast, highlights, shadows, and gradients. Every output color must come from the corresponding source region. Do not color-grade, enhance, recolor, simplify, merge, reduce, substitute, or invent colors. Do not apply a retro palette. Color reduction is handled later by the app.
+
+PIXEL STYLE: change only the spatial rendering into clearly visible chunky square pixel clusters, stair-step diagonals, hard edges, no anti-aliasing, and no smooth curves. Approximate gradients and texture with larger square samples of their original source colors rather than changing the palette.
+
+OUTPUT LOCK: output a clean raster pixel-art image only. No visible grid lines, tile borders, checkerboard, beads, pegboard, frame, new text, new colors, new objects, or new scenery.`;
 
 type GeminiResponse = {
   candidates?: Array<{

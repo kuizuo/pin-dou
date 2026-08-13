@@ -1,5 +1,4 @@
 import type { AiVariant } from "./types";
-import { removePlainBackground } from "./background";
 
 export type AiStyleCandidate = {
   variant: AiVariant;
@@ -29,6 +28,101 @@ function canvasBlob(canvas: HTMLCanvasElement) {
   );
 }
 
+export function restoreSourceColors(
+  source: Uint8ClampedArray,
+  generated: Uint8ClampedArray,
+  width: number,
+  height: number,
+) {
+  if (source.length !== generated.length || source.length !== width * height * 4)
+    throw new Error("图片颜色数据不完整。");
+  const matches = new Map<
+    number,
+    Map<number, { count: number; red: number; green: number; blue: number }>
+  >();
+  for (let index = 0; index < width * height; index += 1) {
+    const offset = index * 4;
+    if (generated[offset + 3] < 12 || source[offset + 3] < 12) continue;
+    const generatedColor
+      = ((generated[offset] >> 5) << 6)
+        | ((generated[offset + 1] >> 5) << 3)
+        | (generated[offset + 2] >> 5);
+    const sourceColor
+      = ((source[offset] >> 4) << 8)
+        | ((source[offset + 1] >> 4) << 4)
+        | (source[offset + 2] >> 4);
+    const colors = matches.get(generatedColor) ?? new Map();
+    const match = colors.get(sourceColor) ?? {
+      count: 0,
+      red: 0,
+      green: 0,
+      blue: 0,
+    };
+    match.count += 1;
+    match.red += source[offset];
+    match.green += source[offset + 1];
+    match.blue += source[offset + 2];
+    colors.set(sourceColor, match);
+    matches.set(generatedColor, colors);
+  }
+  const palette = new Map<number, readonly [number, number, number]>();
+  for (const [key, colors] of matches) {
+    const best = [...colors.values()].reduce((winner, color) =>
+      color.count > winner.count ? color : winner,
+    );
+    palette.set(key, [
+      Math.round(best.red / best.count),
+      Math.round(best.green / best.count),
+      Math.round(best.blue / best.count),
+    ]);
+  }
+  const output = new Uint8ClampedArray(generated);
+  for (let index = 0; index < width * height; index += 1) {
+    const offset = index * 4;
+    const generatedColor
+      = ((generated[offset] >> 5) << 6)
+        | ((generated[offset + 1] >> 5) << 3)
+        | (generated[offset + 2] >> 5);
+    const color = palette.get(generatedColor);
+    if (!color) continue;
+    output[offset] = color[0];
+    output[offset + 1] = color[1];
+    output[offset + 2] = color[2];
+  }
+  return output;
+}
+
+async function preserveSourceColors(sourceUrl: string, generatedUrl: string) {
+  const source = new Image(),
+    generated = new Image();
+  source.src = sourceUrl;
+  generated.src = generatedUrl;
+  await Promise.all([source.decode(), generated.decode()]);
+  const width = generated.naturalWidth,
+    height = generated.naturalHeight;
+  const canvas = document.createElement("canvas"),
+    sourceCanvas = document.createElement("canvas");
+  canvas.width = sourceCanvas.width = width;
+  canvas.height = sourceCanvas.height = height;
+  const context = canvas.getContext("2d", { willReadFrequently: true }),
+    sourceContext = sourceCanvas.getContext("2d", { willReadFrequently: true });
+  if (!context || !sourceContext)
+    throw new Error("当前浏览器无法校准图片颜色。");
+  context.drawImage(generated, 0, 0, width, height);
+  sourceContext.drawImage(source, 0, 0, width, height);
+  const output = context.getImageData(0, 0, width, height);
+  output.data.set(
+    restoreSourceColors(
+      sourceContext.getImageData(0, 0, width, height).data,
+      output.data,
+      width,
+      height,
+    ),
+  );
+  context.putImageData(output, 0, 0);
+  return canvas.toDataURL("image/png");
+}
+
 async function compactImage(dataUrl: string) {
   const image = new Image();
   image.src = dataUrl;
@@ -40,7 +134,7 @@ async function compactImage(dataUrl: string) {
   }
   const scale = Math.min(
     1,
-    1024 / Math.max(image.naturalWidth, image.naturalHeight),
+    511 / Math.max(image.naturalWidth, image.naturalHeight),
   );
   const width = Math.max(1, Math.round(image.naturalWidth * scale)),
     height = Math.max(1, Math.round(image.naturalHeight * scale));
@@ -52,12 +146,17 @@ async function compactImage(dataUrl: string) {
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, width, height);
   context.drawImage(image, 0, 0, width, height);
-  const ratio = 1024 / Math.max(width, height);
   return {
     blob: await canvasBlob(canvas),
-    width: Math.max(256, Math.min(1024, Math.round(width * ratio))),
-    height: Math.max(256, Math.min(1024, Math.round(height * ratio))),
+    ...aiOutputSize(width, height),
   };
+}
+
+export function aiOutputSize(width: number, height: number) {
+  const ratio = 1024 / Math.max(width, height);
+  const modelSize = (value: number) =>
+    Math.max(256, Math.min(1024, Math.round(value / 64) * 64));
+  return { width: modelSize(width * ratio), height: modelSize(height * ratio) };
 }
 
 export async function generatePixelStyle(
@@ -83,7 +182,7 @@ export async function generatePixelStyle(
     form.set("height", String(input.height));
   }
   onProgress?.(
-    `${request.provider === "gemini" ? "Gemini" : "Cloudflare AI"} 正在整理主体、轮廓和配色…`,
+    `${request.provider === "gemini" ? "Gemini" : "Cloudflare AI"} 正在进行像素化处理…`,
   );
   const endpoint
     = request.provider === "gemini"
@@ -101,7 +200,12 @@ export async function generatePixelStyle(
     };
     throw new Error(payload.error || `AI 图片处理失败（${response.status}）。`);
   }
-  const originalImage = await blobAsDataUrl(await response.blob());
-  const image = await removePlainBackground(originalImage, onProgress);
-  return { variant: "pixel", image, originalImage } satisfies AiStyleCandidate;
+  const generatedImage = await blobAsDataUrl(await response.blob());
+  onProgress?.("正在按原图校准颜色…");
+  const originalImage = await preserveSourceColors(dataUrl, generatedImage);
+  return {
+    variant: "pixel",
+    image: originalImage,
+    originalImage,
+  } satisfies AiStyleCandidate;
 }

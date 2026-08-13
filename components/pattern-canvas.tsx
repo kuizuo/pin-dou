@@ -70,7 +70,8 @@ export function PatternCanvas({
       const y = Math.floor(index / pattern.width) * cell;
 
       if (id) {
-        context.fillStyle = beadById(id).hex;
+        const bead = beadById(id);
+        context.fillStyle = bead.hex;
         if (shape === "circle") {
           context.beginPath();
           context.arc(x + cell / 2, y + cell / 2, cell * 0.42, 0, Math.PI * 2);
@@ -78,6 +79,12 @@ export function PatternCanvas({
         }
         else {
           context.fillRect(x, y, cell, cell);
+        }
+        if (!showCodes && bead.rgb.every(channel => channel >= 235)) {
+          context.strokeStyle = "#b9c0cc";
+          context.lineWidth = 1;
+          if (shape === "circle") context.stroke();
+          else context.strokeRect(x + 1.5, y + 1.5, cell - 3, cell - 3);
         }
       }
 
