@@ -321,7 +321,7 @@ describe("统一图纸工作台", () => {
     );
     expect(normalizedCss).toContain(".panel-switch-row");
     expect(result).toContain(
-      "max-[641px]:h-auto! max-[641px]:max-h-[min(62dvh,520px)]!",
+      "max-[641px]:h-auto! max-[641px]:max-h-[min(68dvh,580px)]!",
     );
   });
 

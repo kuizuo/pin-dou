@@ -1437,7 +1437,7 @@ export function Result({
           />
           <aside
             id="workbench-panel"
-            className={`workbench-panel min-[980px]:static! min-[980px]:z-auto! min-[980px]:h-auto! min-[980px]:w-[var(--workbench-panel-width)]! min-[980px]:border-t-0! min-[980px]:border-l! min-[980px]:border-l-border! min-[980px]:shadow-[-12px_0_30px_rgb(65_37_49/0.07)]! max-[641px]:h-auto! max-[641px]:max-h-[min(62dvh,520px)]!${panelReady ? "" : " max-[979px]:hidden!"}`}
+            className={`workbench-panel min-[980px]:static! min-[980px]:z-auto! min-[980px]:h-auto! min-[980px]:w-[var(--workbench-panel-width)]! min-[980px]:border-t-0! min-[980px]:border-l! min-[980px]:border-l-border! min-[980px]:shadow-[-12px_0_30px_rgb(65_37_49/0.07)]! max-[641px]:h-auto! max-[641px]:max-h-[min(68dvh,580px)]!${panelReady ? "" : " max-[979px]:hidden!"}`}
             role="dialog"
             aria-label="图纸设置"
           >
