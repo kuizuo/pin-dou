@@ -14,6 +14,8 @@ import {
   Minus,
   PaintBucket,
   Palette,
+  PanelBottomClose,
+  PanelBottomOpen,
   PanelRightClose,
   PanelRightOpen,
   Plus,
@@ -384,6 +386,7 @@ export function Result({
   const [scale, setScale] = useState(1),
     [spacePanning, setSpacePanning] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true),
+    [panelReady, setPanelReady] = useState(false),
     [panelTab, setPanelTab] = useState<PanelTab>("adjust");
   const [draftSettings, setDraftSettings] = useState<GenerationSettings>({
     ...project.settings,
@@ -447,6 +450,13 @@ export function Result({
   useEffect(() => {
     pendingCallback.current = onPendingChange;
   }, [onPendingChange]);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (!window.matchMedia("(min-width: 980px)").matches) setPanelOpen(false);
+      setPanelReady(true);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
   useEffect(() => {
     pendingCallback.current(settingsPending);
   }, [settingsPending]);
@@ -1246,7 +1256,19 @@ export function Result({
               aria-controls="workbench-panel"
               onClick={() => setPanelOpen(value => !value)}
             >
-              {panelOpen ? <PanelRightClose /> : <PanelRightOpen />}
+              {panelOpen
+                ? (
+                    <>
+                      <PanelBottomClose className="min-[980px]:hidden!" />
+                      <PanelRightClose className="max-[979px]:hidden!" />
+                    </>
+                  )
+                : (
+                    <>
+                      <PanelBottomOpen className="min-[980px]:hidden!" />
+                      <PanelRightOpen className="max-[979px]:hidden!" />
+                    </>
+                  )}
               <span>{panelOpen ? "收起设置" : "展开设置"}</span>
             </Button>
           </ControlTooltip>
@@ -1409,13 +1431,13 @@ export function Result({
         <>
           <button
             type="button"
-            className="workbench-sheet-backdrop min-[980px]:hidden! max-[641px]:[inset-block-start:56px]!"
+            className={`workbench-sheet-backdrop min-[980px]:hidden! max-[641px]:[inset-block-start:56px]!${panelReady ? "" : " max-[979px]:hidden!"}`}
             aria-label="关闭设置"
             onClick={() => setPanelOpen(false)}
           />
           <aside
             id="workbench-panel"
-            className="workbench-panel min-[980px]:static! min-[980px]:z-auto! min-[980px]:h-auto! min-[980px]:w-[var(--workbench-panel-width)]! min-[980px]:border-t-0! min-[980px]:border-l! min-[980px]:border-l-border! min-[980px]:shadow-[-12px_0_30px_rgb(65_37_49/0.07)]! max-[641px]:h-auto! max-[641px]:max-h-[min(62dvh,520px)]!"
+            className={`workbench-panel min-[980px]:static! min-[980px]:z-auto! min-[980px]:h-auto! min-[980px]:w-[var(--workbench-panel-width)]! min-[980px]:border-t-0! min-[980px]:border-l! min-[980px]:border-l-border! min-[980px]:shadow-[-12px_0_30px_rgb(65_37_49/0.07)]! max-[641px]:h-auto! max-[641px]:max-h-[min(62dvh,520px)]!${panelReady ? "" : " max-[979px]:hidden!"}`}
             role="dialog"
             aria-label="图纸设置"
           >

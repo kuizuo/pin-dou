@@ -77,7 +77,7 @@ describe("统一图纸工作台", () => {
     expect(prepare).toContain("生成方式");
     expect(prepare).toContain("本地处理");
     expect(prepare).toContain("AI 处理");
-    expect(prepare).toContain("正方形");
+    expect(prepare).toContain("1:1 裁切");
     expect(prepare).toContain("<CropIcon />");
     expect(prepare).not.toContain("3:4");
     expect(prepare).not.toContain("4:3");
@@ -247,14 +247,23 @@ describe("统一图纸工作台", () => {
       ".workbench-tool-colors { min-width: 0; flex: 1; display: flex; align-items: center; gap: 4px; overflow-x: auto;",
     );
     expect(result).toContain("min-[980px]:overflow-visible!");
+    expect(normalizedCss).toContain(
+      ".workbench-tool-color[aria-pressed=true] { border-color: var(--primary); box-shadow: inset 0 0 0 2px var(--primary);",
+    );
   });
 
   it("下载旁的开关打开设置抽屉", () => {
     expect(result).toContain("const [panelOpen, setPanelOpen] = useState(true)");
+    expect(result).toContain(
+      "window.matchMedia(\"(min-width: 980px)\").matches",
+    );
+    expect(result).toContain("setPanelOpen(false)");
+    expect(result).toContain("<PanelBottomOpen className=\"min-[980px]:hidden!\" />");
+    expect(result).toContain("<PanelBottomClose className=\"min-[980px]:hidden!\" />");
     expect(result).toContain("{ id: \"adjust\", label: \"设置\" }");
     expect(result).toContain("{ id: \"colors\", label: \"颜色\" }");
     expect(result).toContain("{ id: \"versions\", label: \"版本\" }");
-    expect(result).toContain("className=\"workbench-panel ");
+    expect(result).toContain("className={`workbench-panel ");
     expect(result).toContain("role=\"tablist\"");
     expect(result).toContain("onDoubleClick={() => addQuickColor(color.id)}");
     expect(normalizedCss).toContain(
@@ -324,11 +333,13 @@ describe("统一图纸工作台", () => {
     expect(normalizedCss).not.toContain(".panel-ai-picker");
   });
 
-  it("AI 处理时隐藏裁切区和右上角按钮，并可返回当前图片", () => {
+  it("裁切时不显示返回按钮，AI 处理时仍可返回当前图片", () => {
     expect(prepare).toContain("{!showVariants && (");
     expect(prepare).toContain("预览 AI 处理效果大图");
     expect(prepare).toContain("AI 处理效果大图预览");
-    expect(prepare).toContain("onClick={showVariants ? onReturnToImage : onBack}");
+    expect(prepare).toContain("{showVariants && (");
+    expect(prepare).toContain("onClick={onReturnToImage}");
+    expect(prepare).not.toContain("onBack");
     expect(prepare).toContain("{!showVariants && (\n          <Button");
     expect(prepare).not.toContain("showVariants ? \"重新生成\"");
     expect(workspace).toContain("onReturnToImage={() => {");
@@ -380,8 +391,12 @@ describe("统一图纸工作台", () => {
     expect(css).not.toMatch(/@media\s*\((?:max|min)-width/);
   });
 
-  it("手机端图片工具等宽排列，AI 设置与生成方式保持同一行", () => {
-    expect(prepare).toContain("max-[641px]:grid-cols-3");
+  it("手机端图片工具单行等宽排列，AI 设置与生成方式保持同一行", () => {
+    expect(prepare).toContain(
+      "max-[640px]:grid-cols-[repeat(auto-fit,minmax(0,1fr))]",
+    );
+    expect(prepare).toContain("max-[640px]:contents");
+    expect(prepare).toContain("max-[641px]:grid-cols-4");
     expect(prepare).toContain("grid-cols-[minmax(0,1fr)_44px]");
     expect(prepare).toContain("max-[641px]:size-11!");
   });

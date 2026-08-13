@@ -231,9 +231,6 @@ function CropPreview({
         : (
             <LoaderCircle className="spin" />
           )}
-      <span className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-lg bg-[rgb(15_23_38/0.8)] px-2.5 py-1.5 text-[0.68rem] whitespace-nowrap text-white">
-        拖动裁切框移动 · 拉动边角调整大小
-      </span>
       {dragging && (
         <div className="pointer-events-none absolute inset-3 z-20 grid place-items-center rounded-[18px] border-2 border-dashed border-primary bg-[rgb(24_34_53/0.82)] text-base font-extrabold text-white backdrop-blur-sm">
           松开即可替换图片
@@ -392,7 +389,6 @@ function VariantCard({
 export function Prepare({
   draft,
   setDraft,
-  onBack,
   onFile,
   onGenerate,
   onModeChange,
@@ -413,7 +409,6 @@ export function Prepare({
 }: {
   draft: Draft;
   setDraft: (draft: Draft) => void;
-  onBack: () => void;
   onFile: (file?: File) => void;
   onGenerate: (request?: AiRequest) => void;
   onModeChange: (mode: GenerationSettings["mode"]) => void;
@@ -465,8 +460,8 @@ export function Prepare({
   }
   return (
     <main className="mx-auto w-[min(1320px,calc(100%-40px))] pt-7 pb-[120px] max-[640px]:w-[calc(100%-20px)] max-[640px]:pt-2.5 max-[640px]:pb-[104px]">
-      <header className="mb-3.5 flex min-h-[58px] items-center justify-between gap-2 max-[640px]:items-start">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <header className="mb-3.5 flex min-h-[58px] items-center justify-between gap-2 max-[640px]:grid max-[640px]:grid-cols-[repeat(auto-fit,minmax(0,1fr))] max-[640px]:gap-1.5 max-[360px]:[&_svg]:hidden">
+        <div className="flex min-w-0 items-center gap-2 max-[640px]:contents">
           <input
             ref={uploadInput}
             type="file"
@@ -477,14 +472,17 @@ export function Prepare({
               event.target.value = "";
             }}
           />
+          {showVariants && (
+            <Button
+              variant="outline"
+              onClick={onReturnToImage}
+            >
+              <ArrowLeft />
+              返回
+            </Button>
+          )}
           <Button
-            variant="outline"
-            onClick={showVariants ? onReturnToImage : onBack}
-          >
-            <ArrowLeft />
-            返回
-          </Button>
-          <Button
+            className="max-[640px]:min-w-0 max-[640px]:flex-1 max-[640px]:gap-1 max-[640px]:px-2 max-[640px]:text-xs"
             variant="outline"
             disabled={busy}
             onClick={() => uploadInput.current?.click()}
@@ -494,6 +492,7 @@ export function Prepare({
           </Button>
           {!showVariants && onSwitchSample && sampleTotal > 1 && (
             <Button
+              className="max-[640px]:min-w-0 max-[640px]:flex-1 max-[640px]:gap-1 max-[640px]:px-2 max-[640px]:text-xs"
               variant="outline"
               aria-label={`切换示例，当前第 ${samplePosition} 张，共 ${sampleTotal} 张`}
               disabled={busy}
@@ -509,7 +508,7 @@ export function Prepare({
         </div>
         {!showVariants && (
           <Button
-            className="max-[640px]:px-2.5"
+            className="max-[640px]:w-full max-[640px]:gap-1 max-[640px]:px-2 max-[640px]:text-xs"
             disabled={busy}
             onClick={() => aiMode ? runAi(onGenerate) : onGenerate()}
           >
@@ -538,7 +537,7 @@ export function Prepare({
           />
           <div className="flex min-h-[86px] items-center justify-between gap-[18px] border-t border-border p-3 max-[901px]:flex-col max-[901px]:items-stretch max-[641px]:gap-3">
             <div
-              className="flex min-w-0 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:min-h-11 [&>*]:flex-none [&>button.active]:border-primary! [&>button.active]:bg-accent! [&>button.active]:text-accent-foreground! [&_[data-slot=button]]:border-border! [&_[data-slot=button]]:bg-muted! [&_[data-slot=button]]:text-foreground! max-[641px]:grid max-[641px]:w-full max-[641px]:grid-cols-3 max-[641px]:gap-1.5 max-[641px]:overflow-visible max-[641px]:p-0 max-[641px]:[&>*]:w-full max-[641px]:[&>*]:min-w-0 max-[641px]:[&>*]:px-1.5"
+              className="flex min-w-0 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:min-h-11 [&>*]:flex-none [&>button.active]:border-primary! [&>button.active]:bg-accent! [&>button.active]:text-accent-foreground! [&_[data-slot=button]]:border-border! [&_[data-slot=button]]:bg-muted! [&_[data-slot=button]]:text-foreground! max-[641px]:grid max-[641px]:w-full max-[641px]:grid-cols-4 max-[641px]:gap-1 max-[641px]:overflow-visible max-[641px]:p-0 max-[641px]:[&>*]:w-full max-[641px]:[&>*]:min-w-0 max-[641px]:[&>*]:gap-1 max-[641px]:[&>*]:px-1 max-[641px]:[&>*]:text-xs max-[360px]:[&_svg]:hidden"
               aria-label="图片方向与裁切比例"
             >
               <Button
@@ -586,7 +585,7 @@ export function Prepare({
                   setCropAspect(current => current === 1 ? undefined : 1)}
               >
                 <CropIcon />
-                正方形
+                1:1 裁切
               </Button>
             </div>
             <fieldset className="m-0 flex min-w-0 items-center justify-end gap-2.5 border-0 p-0 max-[901px]:w-full max-[901px]:justify-between max-[641px]:grid max-[641px]:grid-cols-[minmax(0,1fr)_44px] max-[641px]:gap-2">

@@ -540,7 +540,6 @@ export function Workspace({
           geminiKey={geminiKey}
           message={message}
           onAiProviderChange={setAiProvider}
-          onBack={home}
           onFile={file => void chooseFile(file)}
           onChooseCandidate={candidate => void chooseAiCandidate(candidate)}
           onGeminiKeyChange={rememberGeminiKey}
