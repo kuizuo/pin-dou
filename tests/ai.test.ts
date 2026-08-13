@@ -5,6 +5,18 @@ import { aiOutputSize, restoreSourceColors } from "../lib/ai";
 import { isFreeQuotaError } from "../worker/src/index";
 
 describe("AI 图片尺寸", () => {
+  it("线上构建不会带入本地 AI 配置", () => {
+    const packageJson = JSON.parse(
+      readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+    ) as { scripts: { deploy: string } };
+    expect(packageJson.scripts.deploy).toContain(
+      "NEXT_PUBLIC_PIXEL_WORKER_URL=https://api.pindou.kuizuo.me/v1/pixelize",
+    );
+    expect(packageJson.scripts.deploy).toContain(
+      "NEXT_PUBLIC_TURNSTILE_SITE_KEY=0x4AAAAAAEO5KesYkFyoUUYE",
+    );
+  });
+
   it("保留横竖比例并使用模型稳定支持的尺寸", () => {
     expect(aiOutputSize(576, 204)).toEqual({ width: 1024, height: 384 });
     expect(aiOutputSize(204, 576)).toEqual({ width: 384, height: 1024 });

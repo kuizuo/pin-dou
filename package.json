@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build && node scripts/prepare-standalone.mjs",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy": "NEXT_PUBLIC_PIXEL_WORKER_URL=https://api.pindou.kuizuo.me/v1/pixelize NEXT_PUBLIC_TURNSTILE_SITE_KEY=0x4AAAAAAEO5KesYkFyoUUYE opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "start": "node .next/standalone/server.js",
     "lint": "eslint .",
