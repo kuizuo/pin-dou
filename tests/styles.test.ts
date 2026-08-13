@@ -22,6 +22,14 @@ const header = readFileSync(
   new URL("../components/app-header.tsx", import.meta.url),
   "utf8",
 );
+const home = readFileSync(
+  new URL("../components/workspace/home.tsx", import.meta.url),
+  "utf8",
+);
+const patternPreview = readFileSync(
+  new URL("../components/pattern-preview-dialog.tsx", import.meta.url),
+  "utf8",
+);
 const aiSettings = readFileSync(
   new URL("../components/ai-settings-dialog.tsx", import.meta.url),
   "utf8",
@@ -37,6 +45,27 @@ const layout = readFileSync(
 const ai = readFileSync(new URL("../lib/ai.ts", import.meta.url), "utf8");
 
 describe("统一图纸工作台", () => {
+  it("作品列表支持多选后统一确认删除", () => {
+    expect(home).toContain("批量删除");
+    expect(home).toContain("aria-pressed={selectionMode");
+    expect(home).toContain("await deleteProjects([...selectedIds])");
+    expect(home).toContain("删除选中的 ${selectedIds.size} 个作品");
+  });
+
+  it("备份和恢复操作集中在备份设置弹窗", () => {
+    const settings = home.indexOf("<AlertDialogTitle>备份设置</AlertDialogTitle>");
+    expect(settings).toBeGreaterThan(-1);
+    expect(home.indexOf("恢复备份")).toBeGreaterThan(settings);
+    expect(home.indexOf("备份全部")).toBeGreaterThan(settings);
+  });
+
+  it("每个作品可用共享弹窗直接预览图纸", () => {
+    expect(home).toContain("<PatternPreviewDialog");
+    expect(home).toContain("<Eye />");
+    expect(home).toContain("预览");
+    expect(result).toContain("<PatternPreviewDialog");
+  });
+
   it("按钮的键盘焦点清晰但不过重", () => {
     expect(normalizedCss).toContain("button:not([data-slot]):focus-visible");
   });
@@ -126,19 +155,20 @@ describe("统一图纸工作台", () => {
     expect(result).toContain("<kbd>1</kbd>");
     expect(result).toContain("<kbd>{shortcut}</kbd>");
     expect(result).not.toContain("背景恢复");
-    expect(result).toContain("图纸预览");
-    expect(result).toContain("复制图片");
+    expect(patternPreview).toContain("图纸预览");
+    expect(patternPreview).toContain("复制图片");
     expect(result).toContain("分享图纸");
     expect(result).toContain("预览并下载图纸");
-    expect(result).toContain("下载 PNG");
-    expect(result).toContain("aria-label=\"关闭预览\"");
-    expect(normalizedCss).toContain(".pattern-preview-close { position: absolute; top: 10px; right: 10px;");
-    expect(result).toContain("复制成功");
-    expect(result).toContain("正在复制");
-    expect(result).toContain("setTimeout(() => setCopied(false), 2000)");
-    expect(result).toContain("if (copying || copied) return");
+    expect(patternPreview).toContain("下载 PNG");
+    expect(patternPreview).toContain("aria-label=\"关闭预览\"");
+    expect(normalizedCss).toContain(".pattern-preview-close { position: absolute; top: 14px; right: 16px;");
+    expect(patternPreview).toContain("复制成功");
+    expect(patternPreview).toContain("正在复制");
+    expect(patternPreview).toContain("setTimeout(() => setCopied(false), 2000)");
+    expect(patternPreview).toContain("if (copying || copied) return");
     expect(normalizedCss).toContain(".pattern-preview-copy { width: 116px;");
-    expect(result).toContain("{copied");
+    expect(normalizedCss).toContain("overscroll-behavior: none");
+    expect(patternPreview).toContain("{copied");
     expect(normalizedCss).not.toContain(".pattern-preview-copy-label > span");
     expect(normalizedCss).not.toContain("transition: opacity 140ms ease");
     expect(result).not.toContain("aria-label=\"预览图纸\"");

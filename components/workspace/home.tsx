@@ -2,19 +2,23 @@ import {
   Camera,
   Check,
   Copy,
+  Eye,
   FileArchive,
   FolderOpen,
   Grid2X2,
   ImagePlus,
+  ListChecks,
   LoaderCircle,
   Pencil,
   Save,
+  Settings,
   Trash2,
   Upload,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import type { Project } from "@/lib/types";
 import { PatternCanvas } from "@/components/pattern-canvas";
+import { PatternPreviewDialog } from "@/components/pattern-preview-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,8 +37,21 @@ import {
 } from "@/components/ui/tooltip";
 import { patternStats } from "@/lib/beads";
 import {
+  authorizeAndSync,
+  chooseBackupDirectory,
+  forgetBackupDirectory,
+  type LocalBackupStatus,
+  saveManualBackup,
+  syncBackup,
+} from "@/lib/local-backup";
+import {
+  copyPatternPng,
+  downloadPatternPng,
+  renderPattern,
+} from "@/lib/pattern";
+import {
   deleteProject,
-  downloadBackup,
+  deleteProjects,
   duplicateProject,
   importBackup,
   saveProject,
@@ -119,26 +136,120 @@ export function NewProject({
 }
 
 export function Home({
+  backupStatus,
+  localBackupSupported,
   projects,
+  onBackupStatusChange,
   onFile,
   onSample,
   onOpen,
   onRefresh,
 }: {
+  backupStatus: LocalBackupStatus;
+  localBackupSupported: boolean;
   projects: Project[];
+  onBackupStatusChange: (status: LocalBackupStatus) => void;
   onFile: (file?: File) => void;
   onSample: () => void;
   onOpen: (project: Project) => void;
   onRefresh: () => void;
 }) {
   const backup = useRef<HTMLInputElement>(null),
+    settingsButton = useRef<HTMLButtonElement>(null),
     [message, setMessage] = useState(""),
+    [settingsOpen, setSettingsOpen] = useState(false),
+    [directoryBusy, setDirectoryBusy] = useState(false),
+    [backingUp, setBackingUp] = useState(false),
+    [selectionMode, setSelectionMode] = useState(false),
+    [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set()),
+    [batchDeleteOpen, setBatchDeleteOpen] = useState(false),
+    [batchDeleting, setBatchDeleting] = useState(false),
+    [preview, setPreview] = useState<{ project: Project; src: string } | null>(null),
     [pending, setPending] = useState<{
       action: "rename" | "delete";
       project: Project;
     } | null>(null),
     [name, setName] = useState(""),
     [saving, setSaving] = useState(false);
+  const backupStatusText
+    = backupStatus.state === "not-configured"
+      ? "尚未设置本地文件夹"
+      : backupStatus.state === "needs-permission"
+        ? "需要重新授权后才能继续自动同步"
+        : backupStatus.state === "error"
+          ? backupStatus.message || "最近一次同步失败"
+          : backupStatus.state === "saved" && backupStatus.savedAt
+            ? `已于 ${new Date(backupStatus.savedAt).toLocaleTimeString("zh-CN")} 自动同步`
+            : "自动同步已开启";
+
+  async function backupAll() {
+    setBackingUp(true);
+    try {
+      setMessage(await saveManualBackup(projects));
+    }
+    catch (error) {
+      setMessage(error instanceof Error ? error.message : "备份失败。");
+    }
+    finally {
+      setBackingUp(false);
+      setSettingsOpen(false);
+    }
+  }
+
+  function openBackupSettings() {
+    setSettingsOpen(true);
+    if (backupStatus.state === "needs-permission" && !directoryBusy)
+      void reauthorizeDirectory();
+  }
+
+  async function chooseDirectory() {
+    setDirectoryBusy(true);
+    try {
+      await chooseBackupDirectory();
+      onBackupStatusChange(await syncBackup(projects));
+      setMessage("本地备份文件夹已设置。");
+    }
+    catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError"))
+        onBackupStatusChange({
+          state: "error",
+          folderName: backupStatus.folderName,
+          message: error instanceof Error ? error.message : "无法选择文件夹。",
+        });
+    }
+    finally {
+      setDirectoryBusy(false);
+    }
+  }
+
+  async function reauthorizeDirectory() {
+    setDirectoryBusy(true);
+    try {
+      onBackupStatusChange(await authorizeAndSync(projects));
+    }
+    finally {
+      setDirectoryBusy(false);
+    }
+  }
+
+  async function forgetDirectory() {
+    setDirectoryBusy(true);
+    try {
+      await forgetBackupDirectory();
+      onBackupStatusChange({ state: "not-configured" });
+      setMessage("已停止使用本地备份文件夹，已有备份不会删除。");
+    }
+    catch (error) {
+      onBackupStatusChange({
+        ...backupStatus,
+        state: "error",
+        message: error instanceof Error ? error.message : "无法更新文件夹设置。",
+      });
+    }
+    finally {
+      setDirectoryBusy(false);
+    }
+  }
   async function loadBackup(file?: File) {
     if (!file) return;
     try {
@@ -149,6 +260,10 @@ export function Home({
     catch (error) {
       setMessage(error instanceof Error ? error.message : "备份恢复失败。");
     }
+    finally {
+      setSettingsOpen(false);
+      if (backup.current) backup.current.value = "";
+    }
   }
   async function copy(project: Project) {
     try {
@@ -157,6 +272,16 @@ export function Home({
     }
     catch (error) {
       setMessage(error instanceof Error ? error.message : "复制失败。");
+    }
+  }
+  async function copyPreview(project: Project) {
+    try {
+      await copyPatternPng(project.pattern);
+      return true;
+    }
+    catch (error) {
+      setMessage(error instanceof Error ? error.message : "复制失败，请改用下载。");
+      return false;
     }
   }
   async function confirmProjectAction() {
@@ -187,6 +312,39 @@ export function Home({
     }
     finally {
       setSaving(false);
+    }
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function stopSelecting() {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }
+
+  async function confirmBatchDelete() {
+    if (!selectedIds.size) return;
+    const count = selectedIds.size;
+    setBatchDeleting(true);
+    try {
+      await deleteProjects([...selectedIds]);
+      setBatchDeleteOpen(false);
+      stopSelecting();
+      await onRefresh();
+      setMessage(`已删除 ${count} 个作品。`);
+    }
+    catch (error) {
+      setMessage(error instanceof Error ? error.message : "批量删除失败。");
+    }
+    finally {
+      setBatchDeleting(false);
     }
   }
   return (
@@ -226,7 +384,7 @@ export function Home({
             <span className="eyebrow">只保存在当前设备</span>
             <h2 className="mt-[5px] text-[1.9rem]">我的作品</h2>
           </div>
-          <div className="flex gap-2 max-[640px]:w-full max-[640px]:gap-1 max-[640px]:[&>*]:flex-1">
+          <div className="flex gap-2 max-[640px]:w-full max-[640px]:gap-1 max-[640px]:[&>*:not([data-backup-settings])]:flex-1">
             <input
               ref={backup}
               type="file"
@@ -234,26 +392,69 @@ export function Home({
               accept=".json,.pindou.json,application/json"
               onChange={event => void loadBackup(event.target.files?.[0])}
             />
-            <Button
-              variant="outline"
-              onClick={() => backup.current?.click()}
-            >
-              <Upload />
-              恢复备份
-            </Button>
-            <Button
-              variant="outline"
-              disabled={!projects.length}
-              onClick={() => void downloadBackup(projects)}
-            >
-              <FileArchive />
-              备份全部
-            </Button>
+            {selectionMode
+              ? (
+                  <>
+                    <Button
+                      variant="ghost"
+                      onClick={stopSelecting}
+                    >
+                      取消
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelectedIds(
+                        selectedIds.size === projects.length
+                          ? new Set()
+                          : new Set(projects.map(project => project.id)),
+                      )}
+                    >
+                      {selectedIds.size === projects.length ? "取消全选" : "全选"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      disabled={!selectedIds.size}
+                      onClick={() => setBatchDeleteOpen(true)}
+                    >
+                      <Trash2 />
+                      {selectedIds.size ? `删除 ${selectedIds.size} 个` : "删除"}
+                    </Button>
+                  </>
+                )
+              : (
+                  <>
+                    <Button
+                      variant="outline"
+                      disabled={!projects.length}
+                      onClick={() => setSelectionMode(true)}
+                    >
+                      <ListChecks />
+                      批量删除
+                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={(
+                          <Button
+                            ref={settingsButton}
+                            data-backup-settings
+                            variant="outline"
+                            size="icon"
+                            aria-label="备份设置"
+                            onClick={openBackupSettings}
+                          >
+                            <Settings />
+                          </Button>
+                        )}
+                      />
+                      <TooltipContent>备份设置</TooltipContent>
+                    </Tooltip>
+                  </>
+                )}
           </div>
         </div>
         {message && (
           <p
-            className="flex items-center gap-[9px] rounded-[10px] border border-[#e7bd6c] bg-[#fff5dc] px-3.5 py-3 text-[0.76rem] leading-[1.5] text-[#674b12] [&>div]:ml-auto [&>div]:flex [&>div]:gap-[5px] max-[641px]:flex-wrap max-[641px]:items-start max-[641px]:[&>div]:ml-0 max-[641px]:[&>div]:w-full"
+            className="mt-0 mb-4 flex items-center gap-[9px] rounded-[10px] border border-[#e7bd6c] bg-[#fff5dc] px-3.5 py-3 text-[0.76rem] leading-[1.5] text-[#674b12] [&>div]:ml-auto [&>div]:flex [&>div]:gap-[5px] max-[641px]:flex-wrap max-[641px]:items-start max-[641px]:[&>div]:ml-0 max-[641px]:[&>div]:w-full"
             role="status"
           >
             {message}
@@ -264,12 +465,21 @@ export function Home({
               <div className="grid grid-cols-3 gap-4 max-[900px]:grid-cols-2 max-[640px]:grid-cols-1">
                 {projects.map(project => (
                   <article
-                    className="min-w-0 rounded-[18px] border border-border bg-card p-3 shadow-[0_4px_16px_rgb(24_34_53/0.05)]"
+                    className={cn(
+                      "min-w-0 rounded-[18px] border border-border bg-card p-3 shadow-[0_4px_16px_rgb(24_34_53/0.05)]",
+                      selectionMode && selectedIds.has(project.id)
+                      && "border-primary shadow-[0_0_0_2px_color-mix(in_srgb,var(--primary),transparent_72%)]",
+                    )}
                     key={project.id}
                   >
                     <button
                       className="relative aspect-[4/3] w-full cursor-pointer overflow-hidden rounded-[13px] border-0 bg-[#26344a] [&_canvas]:h-full [&_canvas]:w-full! [&_canvas]:object-contain"
-                      onClick={() => onOpen(project)}
+                      aria-pressed={selectionMode
+                        ? selectedIds.has(project.id)
+                        : undefined}
+                      onClick={() => selectionMode
+                        ? toggleSelected(project.id)
+                        : onOpen(project)}
                     >
                       <PatternCanvas
                         pattern={project.pattern}
@@ -282,6 +492,16 @@ export function Home({
                         {" "}
                         豆板
                       </span>
+                      {selectionMode && (
+                        <span
+                          className={cn(
+                            "absolute top-2 left-2 grid size-7 place-items-center rounded-full border-2 border-white bg-[rgb(24_34_53/0.72)] text-white shadow-sm [&_svg]:size-4",
+                            selectedIds.has(project.id) && "bg-primary",
+                          )}
+                        >
+                          {selectedIds.has(project.id) && <Check />}
+                        </span>
+                      )}
                     </button>
                     <div>
                       <h3 className="mt-3 mb-[3px] text-[0.98rem]">
@@ -301,62 +521,90 @@ export function Home({
                         个版本
                       </p>
                       <div className="flex gap-1 max-[640px]:gap-1 [&>:first-child]:mr-auto">
-                        <Button
-                          size="sm"
-                          onClick={() => onOpen(project)}
-                        >
-                          <FolderOpen />
-                          打开
-                        </Button>
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={(
+                        {selectionMode
+                          ? (
                               <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                aria-label="编辑名称"
-                                onClick={() => {
-                                  setName(project.name);
-                                  setPending({ action: "rename", project });
-                                }}
+                                size="sm"
+                                variant={selectedIds.has(project.id)
+                                  ? "default"
+                                  : "outline"}
+                                onClick={() => toggleSelected(project.id)}
                               >
-                                <Pencil />
+                                {selectedIds.has(project.id) && <Check />}
+                                {selectedIds.has(project.id) ? "已选择" : "选择"}
                               </Button>
+                            )
+                          : (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => onOpen(project)}
+                                >
+                                  <FolderOpen />
+                                  打开
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setPreview({
+                                    project,
+                                    src: renderPattern(project.pattern).toDataURL("image/png"),
+                                  })}
+                                >
+                                  <Eye />
+                                  预览
+                                </Button>
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={(
+                                      <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label="编辑名称"
+                                        onClick={() => {
+                                          setName(project.name);
+                                          setPending({ action: "rename", project });
+                                        }}
+                                      >
+                                        <Pencil />
+                                      </Button>
+                                    )}
+                                  />
+                                  <TooltipContent>编辑名称</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={(
+                                      <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label="复制"
+                                        onClick={() => void copy(project)}
+                                      >
+                                        <Copy />
+                                      </Button>
+                                    )}
+                                  />
+                                  <TooltipContent>复制</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={(
+                                      <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label="删除"
+                                        onClick={() =>
+                                          setPending({ action: "delete", project })}
+                                      >
+                                        <Trash2 />
+                                      </Button>
+                                    )}
+                                  />
+                                  <TooltipContent>删除</TooltipContent>
+                                </Tooltip>
+                              </>
                             )}
-                          />
-                          <TooltipContent>编辑名称</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={(
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                aria-label="复制"
-                                onClick={() => void copy(project)}
-                              >
-                                <Copy />
-                              </Button>
-                            )}
-                          />
-                          <TooltipContent>复制</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={(
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                aria-label="删除"
-                                onClick={() =>
-                                  setPending({ action: "delete", project })}
-                              >
-                                <Trash2 />
-                              </Button>
-                            )}
-                          />
-                          <TooltipContent>删除</TooltipContent>
-                        </Tooltip>
                       </div>
                     </div>
                   </article>
@@ -371,6 +619,130 @@ export function Home({
               </div>
             )}
       </section>
+      <AlertDialog
+        open={batchDeleteOpen}
+        onOpenChange={open => !batchDeleting && setBatchDeleteOpen(open)}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {`删除选中的 ${selectedIds.size} 个作品？`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              删除后只能通过已有备份恢复，这个操作无法撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={batchDeleting}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={batchDeleting}
+              onClick={() => void confirmBatchDelete()}
+            >
+              {batchDeleting
+                ? <LoaderCircle className="spin" />
+                : <Trash2 />}
+              确认删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {preview && (
+        <PatternPreviewDialog
+          src={preview.src}
+          name={preview.project.name}
+          onClose={() => setPreview(null)}
+          onCopy={() => copyPreview(preview.project)}
+          onDownload={() => void downloadPatternPng(preview.project.pattern)}
+        />
+      )}
+      <AlertDialog
+        open={settingsOpen}
+        onOpenChange={open => !directoryBusy && setSettingsOpen(open)}
+      >
+        <AlertDialogContent
+          className="max-w-md!"
+          finalFocus={settingsButton}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>备份设置</AlertDialogTitle>
+            <AlertDialogDescription>
+              下载、恢复备份，或设置自动同步文件夹。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              onClick={() => backup.current?.click()}
+            >
+              <Upload />
+              恢复备份
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!projects.length || backingUp}
+              onClick={() => void backupAll()}
+            >
+              {backingUp
+                ? <LoaderCircle className="spin" />
+                : <FileArchive />}
+              备份全部
+            </Button>
+          </div>
+          {localBackupSupported
+            ? (
+                <>
+                  <div
+                    className="rounded-xl border border-border bg-muted/55 p-3.5"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
+                    <strong className="block text-sm">
+                      {backupStatus.folderName || "未选择文件夹"}
+                    </strong>
+                    <small className="mt-1 block leading-relaxed text-muted-foreground">
+                      {backupStatusText}
+                    </small>
+                  </div>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {backupStatus.folderName && (
+                      <Button
+                        variant="ghost"
+                        disabled={directoryBusy}
+                        onClick={() => void forgetDirectory()}
+                      >
+                        停止使用
+                      </Button>
+                    )}
+                    {backupStatus.state === "needs-permission" && (
+                      <Button
+                        variant="outline"
+                        disabled={directoryBusy}
+                        onClick={() => void reauthorizeDirectory()}
+                      >
+                        重新授权
+                      </Button>
+                    )}
+                    <Button
+                      disabled={directoryBusy}
+                      onClick={() => void chooseDirectory()}
+                    >
+                      {directoryBusy && <LoaderCircle className="spin" />}
+                      {backupStatus.folderName ? "更换文件夹" : "选择文件夹"}
+                    </Button>
+                  </div>
+                </>
+              )
+            : (
+                <p className="m-0 rounded-xl bg-muted/55 p-3.5 text-sm leading-relaxed text-muted-foreground">
+                  当前浏览器不支持本地文件夹备份，仍可下载和恢复备份。
+                </p>
+              )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={directoryBusy}>关闭</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog
         open={!!pending}
         onOpenChange={(open) => {

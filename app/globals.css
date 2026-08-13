@@ -847,7 +847,7 @@ svg {
   font-size: 0.68rem;
 }
 .pattern-preview-actions {
-  padding-right: 40px;
+  padding-right: 48px;
   display: flex;
   gap: 8px;
 }
@@ -861,15 +861,16 @@ svg {
 }
 .pattern-preview-close {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 14px;
+  right: 16px;
 }
 .pattern-preview-heading > div:first-child {
-  padding-right: 36px;
+  padding-right: 44px;
 }
 .pattern-preview-scroll {
   min-height: 0;
   overflow: auto;
+  overscroll-behavior: none;
   padding: 20px;
   background: var(--muted);
   display: flex;

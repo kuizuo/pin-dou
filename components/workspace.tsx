@@ -26,6 +26,12 @@ import {
   generatePixelStyle,
 } from "@/lib/ai";
 import {
+  localBackupStatus,
+  type LocalBackupStatus,
+  supportsLocalBackup,
+  syncBackup,
+} from "@/lib/local-backup";
+import {
   imageToPattern,
   prepareImageFile,
   removeBackground,
@@ -92,6 +98,11 @@ export function Workspace({
   const [aiCandidates, setAiCandidates] = useState<AiStyleCandidate[]>([]);
   const [aiFailures, setAiFailures] = useState<AiStyleFailure[]>([]);
   const [samples, setSamples] = useState<SampleImage[]>([]);
+  const [backupStatus, setBackupStatus] = useState<LocalBackupStatus>({
+    state: "not-configured",
+  });
+  const [localBackupSupported, setLocalBackupSupported] = useState(false);
+  const [projectsReady, setProjectsReady] = useState(false);
   const [workbenchPending, setWorkbenchPending] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<
     (() => void) | null
@@ -101,6 +112,7 @@ export function Workspace({
 
   async function refresh() {
     setProjects(await listProjects());
+    setProjectsReady(true);
   }
 
   function setPath(path: string) {
@@ -121,6 +133,7 @@ export function Workspace({
       if (!active) return;
 
       setProjects(items);
+      setProjectsReady(true);
       if (route.stage === "result") {
         const project = items.find(item => item.id === route.projectId);
         setCurrent(project || null);
@@ -155,6 +168,21 @@ export function Workspace({
       window.removeEventListener("popstate", pop);
     };
   }, [initialProjectId, initialStage]);
+
+  useEffect(() => {
+    const supported = supportsLocalBackup();
+    queueMicrotask(() => setLocalBackupSupported(supported));
+    if (supported) void localBackupStatus().then(setBackupStatus);
+  }, []);
+
+  useEffect(() => {
+    if (!localBackupSupported || !projectsReady) return;
+    const timer = setTimeout(
+      () => void syncBackup(projects).then(setBackupStatus),
+      1000,
+    );
+    return () => clearTimeout(timer);
+  }, [localBackupSupported, projects, projectsReady]);
 
   useEffect(() => {
     currentProjectIdRef.current = current?.id || null;
@@ -456,7 +484,10 @@ export function Workspace({
       )}
       {stage === "home" && (
         <Home
+          backupStatus={backupStatus}
+          localBackupSupported={localBackupSupported}
           onFile={file => void chooseFile(file)}
+          onBackupStatusChange={setBackupStatus}
           onOpen={openProject}
           onRefresh={refresh}
           onSample={() => void chooseSample()}

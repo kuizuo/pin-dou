@@ -114,9 +114,14 @@ async function saveProjects(projects: Project[]) {
 }
 
 export async function deleteProject(id: string) {
+  return deleteProjects([id]);
+}
+
+export async function deleteProjects(ids: string[]) {
   const database = await openDatabase();
   const transaction = database.transaction(STORE, "readwrite");
-  transaction.objectStore(STORE).delete(id);
+  const store = transaction.objectStore(STORE);
+  for (const id of ids) store.delete(id);
   await transactionDone(transaction);
   database.close();
 }
@@ -317,7 +322,7 @@ function dataUrlToBlob(dataUrl: string) {
   return new Blob([bytes], { type });
 }
 
-export async function downloadBackup(projects: Project[]) {
+export async function createBackupBlob(projects: Project[]) {
   const portable = await Promise.all(
     projects.map(async project => ({
       ...project,
@@ -330,7 +335,7 @@ export async function downloadBackup(projects: Project[]) {
         : undefined,
     })),
   );
-  const blob = new Blob(
+  return new Blob(
     [
       JSON.stringify({
         schemaVersion: 2,
@@ -340,8 +345,11 @@ export async function downloadBackup(projects: Project[]) {
     ],
     { type: "application/json" },
   );
+}
+
+export async function downloadBackup(projects: Project[]) {
   saveBlob(
-    blob,
+    await createBackupBlob(projects),
     `拼豆作品备份-${new Date().toLocaleDateString("sv-SE")}.pindou.json`,
   );
 }
