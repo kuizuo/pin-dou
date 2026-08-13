@@ -68,7 +68,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { BEAD_COLORS, patternStats } from "@/lib/beads";
+import { BEAD_COLORS, patternContentSize, patternStats } from "@/lib/beads";
 import {
   applyCellEdits,
   findCellEdits,
@@ -424,6 +424,13 @@ export function Result({
 
   const stats = patternStats(pattern),
     total = stats.reduce((sum, item) => sum + item.count, 0);
+  const contentSize = useMemo(() => patternContentSize(pattern), [pattern]);
+  const physicalSize = contentSize
+    ? [contentSize.width, contentSize.height]
+        .sort((a, b) => b - a)
+        .map(size => `${size / 2} cm`)
+        .join(" × ")
+    : null;
   const quickColors = quickColorIds.flatMap(
     id => BEAD_COLORS.find(color => color.id === id) || [],
   );
@@ -1480,6 +1487,10 @@ export function Result({
                   className="panel-section max-[641px]:gap-[11px]! max-[641px]:px-3! max-[641px]:pt-2.5! max-[641px]:pb-[calc(14px+env(safe-area-inset-bottom))]!"
                   aria-label="调整图纸"
                 >
+                  <div className="panel-size-row">
+                    <strong>实际图案尺寸</strong>
+                    <output>{physicalSize ? `约 ${physicalSize}` : "暂无图案内容"}</output>
+                  </div>
                   <div className="panel-switch-row">
                     <strong>背景处理</strong>
                     <div>

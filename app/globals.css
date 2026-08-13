@@ -661,6 +661,22 @@ svg {
   gap: 12px;
   font-size: 0.72rem;
 }
+.panel-size-row {
+  min-height: 42px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.75rem;
+}
+.panel-size-row output {
+  color: var(--primary);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
 .panel-switch-row > strong {
   font-size: 0.75rem;
 }

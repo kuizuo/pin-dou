@@ -5,6 +5,7 @@ import {
   createSamplePattern,
   labDistance,
   nearestBead,
+  patternContentSize,
   patternStats,
 } from "../lib/beads";
 import {
@@ -36,6 +37,20 @@ describe("MARD 图纸核心处理", () => {
       255, 255, 255, 255, 255, 255, 255, 0,
     ]);
     expect(imageDataToCells(pixels, 2, 1, 8)).toEqual(["T1", null]);
+  });
+
+  it("只按最外圈有豆区域计算实际图案尺寸", () => {
+    const pattern = createSamplePattern(6);
+    pattern.cells = [
+      null, null, null, null, null, null,
+      null, "A1", null, "A2", null, null,
+      null, null, null, null, null, null,
+      null, "A3", null, null, null, null,
+      null, null, null, null, null, null,
+      null, null, null, null, null, null,
+    ];
+    expect(patternContentSize(pattern)).toEqual({ width: 3, height: 3 });
+    expect(patternContentSize({ ...pattern, cells: Array(36).fill(null) })).toBeNull();
   });
 
   it("颜色数量不超过上限并清理零碎小色块", () => {

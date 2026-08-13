@@ -77,6 +77,23 @@ export function patternStats(pattern: Pattern): PatternStats {
     .sort((a, b) => b.count - a.count);
 }
 
+export function patternContentSize(pattern: Pattern) {
+  let minX = pattern.width,
+    minY = pattern.height,
+    maxX = -1,
+    maxY = -1;
+  for (let index = 0; index < pattern.cells.length; index += 1) {
+    if (!pattern.cells[index]) continue;
+    const x = index % pattern.width,
+      y = Math.floor(index / pattern.width);
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  }
+  return maxX < 0 ? null : { width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
 export function createSamplePattern(boardSize = 52): Pattern {
   const cells: Array<string | null> = Array(boardSize * boardSize).fill(null);
   const size = Math.min(42, boardSize - 6);
