@@ -550,13 +550,22 @@ export function Home({
                             )
                           : (
                               <>
-                                <Button
-                                  size="sm"
-                                  onClick={() => onOpen(project)}
-                                >
-                                  <FolderOpen />
-                                  打开
-                                </Button>
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={(
+                                      <Button
+                                        className="max-[640px]:w-11 max-[640px]:px-0"
+                                        size="sm"
+                                        aria-label="打开"
+                                        onClick={() => onOpen(project)}
+                                      >
+                                        <FolderOpen />
+                                        <span className="max-[640px]:hidden">打开</span>
+                                      </Button>
+                                    )}
+                                  />
+                                  <TooltipContent>打开</TooltipContent>
+                                </Tooltip>
                                 <Tooltip>
                                   <TooltipTrigger
                                     render={(

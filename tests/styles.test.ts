@@ -66,6 +66,12 @@ describe("统一图纸工作台", () => {
     expect(result).toContain("<PatternPreviewDialog");
   });
 
+  it("移动端作品打开操作使用紧凑图标按钮", () => {
+    expect(home).toContain("max-[640px]:w-11 max-[640px]:px-0");
+    expect(home).toContain("<span className=\"max-[640px]:hidden\">打开</span>");
+    expect(home).toContain("aria-label=\"打开\"");
+  });
+
   it("按钮的键盘焦点清晰但不过重", () => {
     expect(normalizedCss).toContain("button:not([data-slot]):focus-visible");
   });
@@ -347,6 +353,12 @@ describe("统一图纸工作台", () => {
     expect(prepare).not.toContain("重新截取");
     expect(prepare).toContain("AI 处理");
     expect(prepare).toContain("dialog.current?.showModal()");
+  });
+
+  it("移动端裁切操作只显示图标", () => {
+    expect(prepare.match(/max-\[641px\]:hidden/g)).toHaveLength(4);
+    expect(prepare).toContain("aria-label=\"水平翻转\"");
+    expect(prepare).toContain("aria-label=\"1:1 裁切\"");
   });
 
   it("AI 方案不去背景，避免背景识别失败阻断生成", () => {

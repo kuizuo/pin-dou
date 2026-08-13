@@ -542,11 +542,13 @@ export function Prepare({
           />
           <div className="flex min-h-[86px] items-center justify-between gap-[18px] border-t border-border p-3 max-[901px]:flex-col max-[901px]:items-stretch max-[641px]:gap-3">
             <div
-              className="flex min-w-0 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:min-h-11 [&>*]:flex-none [&>button.active]:border-primary! [&>button.active]:bg-accent! [&>button.active]:text-accent-foreground! [&_[data-slot=button]]:border-border! [&_[data-slot=button]]:bg-muted! [&_[data-slot=button]]:text-foreground! max-[641px]:grid max-[641px]:w-full max-[641px]:grid-cols-4 max-[641px]:gap-1 max-[641px]:overflow-visible max-[641px]:p-0 max-[641px]:[&>*]:w-full max-[641px]:[&>*]:min-w-0 max-[641px]:[&>*]:gap-1 max-[641px]:[&>*]:px-1 max-[641px]:[&>*]:text-xs max-[360px]:[&_svg]:hidden"
+              className="flex min-w-0 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:min-h-11 [&>*]:flex-none [&>button.active]:border-primary! [&>button.active]:bg-accent! [&>button.active]:text-accent-foreground! [&_[data-slot=button]]:border-border! [&_[data-slot=button]]:bg-muted! [&_[data-slot=button]]:text-foreground! max-[641px]:grid max-[641px]:w-full max-[641px]:grid-cols-4 max-[641px]:gap-1 max-[641px]:overflow-visible max-[641px]:p-0 max-[641px]:[&>*]:w-full max-[641px]:[&>*]:min-w-0 max-[641px]:[&>*]:px-1 max-[641px]:[&_svg]:size-5"
               aria-label="图片方向与裁切比例"
             >
               <Button
                 variant="workbench"
+                aria-label="旋转"
+                title="旋转"
                 onClick={() =>
                   setDraft({
                     ...draft,
@@ -558,10 +560,12 @@ export function Prepare({
                   })}
               >
                 <RotateCw />
-                旋转
+                <span className="max-[641px]:hidden">旋转</span>
               </Button>
               <Button
                 variant="workbench"
+                aria-label="水平翻转"
+                title="水平翻转"
                 onClick={() =>
                   setDraft({
                     ...draft,
@@ -569,10 +573,12 @@ export function Prepare({
                   })}
               >
                 <FlipHorizontal />
-                水平翻转
+                <span className="max-[641px]:hidden">水平翻转</span>
               </Button>
               <Button
                 variant="workbench"
+                aria-label="垂直翻转"
+                title="垂直翻转"
                 onClick={() =>
                   setDraft({
                     ...draft,
@@ -580,17 +586,19 @@ export function Prepare({
                   })}
               >
                 <FlipVertical />
-                垂直翻转
+                <span className="max-[641px]:hidden">垂直翻转</span>
               </Button>
               <Button
                 className={cropAspect === 1 ? "active" : ""}
                 variant="workbench"
+                aria-label="1:1 裁切"
                 aria-pressed={cropAspect === 1}
+                title="1:1 裁切"
                 onClick={() =>
                   setCropAspect(current => current === 1 ? undefined : 1)}
               >
                 <CropIcon />
-                1:1 裁切
+                <span className="max-[641px]:hidden">1:1 裁切</span>
               </Button>
             </div>
             <fieldset className="m-0 flex min-w-0 items-center justify-end gap-2.5 border-0 p-0 max-[901px]:w-full max-[901px]:justify-between max-[641px]:grid max-[641px]:grid-cols-[minmax(0,1fr)_44px] max-[641px]:gap-2">
