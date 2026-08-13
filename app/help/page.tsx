@@ -28,7 +28,7 @@ const steps = [
   [
     ImagePlus,
     "上传图片",
-    "拍照或选择 JPG、PNG、WebP、HEIC 图片，单张不超过 10MB。",
+    "从系统相册选择 JPG、PNG、WebP、HEIC 图片，单张不超过 10MB。",
   ],
   [
     SlidersHorizontal,

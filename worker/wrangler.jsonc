@@ -19,7 +19,7 @@
 		}
 	],
 	"vars": {
-		"ALLOWED_ORIGINS": "https://pindou.kuizuo.me"
+		"ALLOWED_ORIGINS": "https://pindou.kuizuo.me,https://pin-dou-generator.pages.dev"
 	},
 	"observability": {
 		"enabled": true,

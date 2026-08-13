@@ -121,6 +121,7 @@ export function AiSettingsDialog({
           <strong>完成安全验证</strong>
           <small>验证只用于保护公共图片处理服务，不会创建账号。</small>
           <Turnstile
+            active={open}
             refreshKey={turnstileRefresh}
             onToken={onTurnstileToken}
           />

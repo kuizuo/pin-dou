@@ -443,14 +443,19 @@ export function Prepare({
     [replacementFile, setReplacementFile] = useState<File | null>(null),
     [turnstileToken, setTurnstileToken] = useState(""),
     [turnstileRefresh, setTurnstileRefresh] = useState(0);
-  const uploadInput = useRef<HTMLInputElement>(null);
+  const uploadInput = useRef<HTMLInputElement>(null),
+    turnstileTime = useRef(0);
   function chooseMode(mode: GenerationSettings["mode"]) {
     setDraft({ ...draft, settings: { ...settings, mode } });
     onModeChange(mode);
   }
   function runAi(action: (request: AiRequest) => void) {
     const credential
-      = aiProvider === "gemini" ? geminiKey.trim() : turnstileToken;
+      = aiProvider === "gemini"
+        ? geminiKey.trim()
+        : Date.now() - turnstileTime.current < 290_000
+          ? turnstileToken
+          : "";
     if (!credential) return setAiSettingsOpen(true);
     action({ provider: aiProvider, credential });
     if (aiProvider === "cloudflare") {
@@ -674,7 +679,10 @@ export function Prepare({
         onClose={() => setAiSettingsOpen(false)}
         onGeminiKeyChange={onGeminiKeyChange}
         onProviderChange={onAiProviderChange}
-        onTurnstileToken={setTurnstileToken}
+        onTurnstileToken={(token) => {
+          turnstileTime.current = token ? Date.now() : 0;
+          setTurnstileToken(token);
+        }}
         open={aiSettingsOpen}
         provider={aiProvider}
         turnstileRefresh={turnstileRefresh}

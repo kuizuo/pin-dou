@@ -98,6 +98,9 @@ describe("统一图纸工作台", () => {
     expect(prepare).not.toContain("AI 只做像素化并尽量保留原图颜色");
     expect(aiSettings).toContain("hidden={provider !== \"cloudflare\"}");
     expect(turnstile).toContain("\"appearance\": \"always\"");
+    expect(turnstile).toContain("window.turnstile?.reset(widgetId)");
+    expect(aiSettings).toContain("active={open}");
+    expect(prepare).toContain("Date.now() - turnstileTime.current < 290_000");
     expect(prepare).toContain("AI 设置，当前使用");
     expect(prepare).not.toContain("gemini-key-field");
     expect(
@@ -385,6 +388,8 @@ describe("统一图纸工作台", () => {
 
   it("首页和裁切区支持拖入图片，替换前需要确认", () => {
     expect(home).toContain("松开即可上传");
+    expect(home).toContain("从相册选择图片");
+    expect(home).not.toContain("capture=");
     expect(home).toContain("event.dataTransfer.files[0]");
     expect(prepare).toContain("松开即可替换图片");
     expect(prepare).toContain("替换当前图片？");

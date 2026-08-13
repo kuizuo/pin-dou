@@ -65,7 +65,7 @@ function validDimension(value: FormDataEntryValue | null) {
 }
 
 async function verifyTurnstile(token: string, request: Request, env: Env) {
-  const form = new FormData();
+  const form = new URLSearchParams();
   form.set("secret", env.TURNSTILE_SECRET_KEY);
   form.set("response", token);
   const ip = request.headers.get("cf-connecting-ip");
@@ -74,7 +74,8 @@ async function verifyTurnstile(token: string, request: Request, env: Env) {
     "https://challenges.cloudflare.com/turnstile/v0/siteverify",
     { method: "POST", body: form },
   );
-  if (!response.ok) return false;
+  if (!response.ok)
+    return false;
   const result: unknown = await response.json();
   if (typeof result !== "object" || result === null) return false;
   const record = result as Record<string, unknown>;

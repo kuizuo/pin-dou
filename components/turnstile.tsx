@@ -11,6 +11,7 @@ declare global {
         options: Record<string, unknown>,
       ) => string;
       remove: (widgetId: string) => void;
+      reset: (widgetId: string) => void;
     };
   }
 }
@@ -18,9 +19,11 @@ declare global {
 export function Turnstile({
   onToken,
   refreshKey = 0,
+  active = true,
 }: {
   onToken: (token: string) => void;
   refreshKey?: number;
+  active?: boolean;
 }) {
   const container = useRef<HTMLDivElement>(null),
     callback = useRef(onToken),
@@ -30,7 +33,13 @@ export function Turnstile({
     callback.current = onToken;
   }, [onToken]);
   useEffect(() => {
-    if (!ready || !sitekey || !container.current || !window.turnstile) return;
+    if (
+      !active
+      || !ready
+      || !sitekey
+      || !container.current
+      || !window.turnstile
+    ) return;
     callback.current("");
     const widgetId = window.turnstile.render(container.current, {
       "sitekey": sitekey,
@@ -39,10 +48,13 @@ export function Turnstile({
       "appearance": "always",
       "callback": (token: string) => callback.current(token),
       "error-callback": () => callback.current(""),
-      "expired-callback": () => callback.current(""),
+      "expired-callback": () => {
+        callback.current("");
+        window.turnstile?.reset(widgetId);
+      },
     });
     return () => window.turnstile?.remove(widgetId);
-  }, [ready, refreshKey, sitekey]);
+  }, [active, ready, refreshKey, sitekey]);
   if (!sitekey)
     return (
       <p className="m-0 text-[0.68rem] text-destructive">

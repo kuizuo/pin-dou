@@ -1,5 +1,4 @@
 import {
-  Camera,
   Check,
   Copy,
   Eye,
@@ -81,7 +80,6 @@ function UploadCard({
         ref={input}
         type="file"
         accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
-        capture="environment"
         onChange={event => onFile(event.target.files?.[0])}
       />
       <button
@@ -102,10 +100,10 @@ function UploadCard({
         }}
       >
         <span className="grid size-[62px] place-items-center rounded-[18px] bg-primary text-white">
-          <Camera size={30} />
+          <ImagePlus size={30} />
         </span>
         <strong className="text-[1.1rem]">
-          {dragging ? "松开即可上传" : "拍照或选择图片"}
+          {dragging ? "松开即可上传" : "从相册选择图片"}
         </strong>
         <small className="text-center text-workbench-muted">
           JPG、PNG、WebP、HEIC · 不超过 10MB
