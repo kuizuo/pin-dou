@@ -317,7 +317,7 @@ function ToolColorProperties({
 }) {
   return (
     <aside
-      className="workbench-tool-properties max-[980px]:top-[calc(var(--workbench-control-size)+20px)]! max-[980px]:h-[calc(var(--workbench-control-size)+8px)]! max-[980px]:p-[3px]! min-[980px]:top-16! min-[980px]:right-auto! min-[980px]:bottom-auto! min-[980px]:left-3! min-[980px]:grid! min-[980px]:h-auto! min-[980px]:w-[198px]! min-[980px]:gap-2! min-[980px]:overflow-visible! min-[980px]:p-2.5!"
+      className="workbench-tool-properties max-[980px]:top-[calc(var(--workbench-control-size)+20px)]! max-[980px]:h-[calc(var(--workbench-control-size)+8px)]! max-[980px]:p-[3px]! min-[980px]:top-16! min-[980px]:right-auto! min-[980px]:bottom-auto! min-[980px]:left-3! min-[980px]:grid! min-[980px]:h-auto! min-[980px]:w-[170px]! min-[980px]:gap-2! min-[980px]:overflow-visible! min-[980px]:p-2.5!"
       aria-label="编辑颜色"
     >
       <div className="workbench-tool-properties-heading min-[980px]:justify-between! min-[980px]:p-0!">
@@ -370,7 +370,6 @@ export function Result({
   );
   const [quickColorIds, setQuickColorIds] = useState(() =>
     patternStats(project.pattern)
-      .slice(0, 6)
       .map(({ color }) => color.id),
   );
   const [history, setHistory] = useState<HistoryEntry[]>([]),

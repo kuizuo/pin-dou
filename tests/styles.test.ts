@@ -234,6 +234,7 @@ describe("统一图纸工作台", () => {
   it("颜色块直接显示色号并使用紧凑多列布局", () => {
     expect(result).toContain("--swatch-foreground");
     expect(result).toContain("className=\"workbench-tool-color ");
+    expect(result).not.toContain(".slice(0, 6)");
     expect(result).toContain("className=\"color-series-heading\"");
     expect(normalizedCss).toContain(
       "grid-template-columns: repeat(auto-fill, minmax(44px, 1fr))",
