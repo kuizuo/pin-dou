@@ -162,7 +162,7 @@ function PatternPreviewDialog({
   return (
     <dialog
       ref={dialog}
-      className="pattern-preview-dialog"
+      className="pattern-preview-dialog max-[641px]:h-auto! max-[641px]:max-h-[78dvh]! max-[641px]:overflow-hidden!"
       aria-labelledby="pattern-preview-title"
       onCancel={(event) => {
         event.preventDefault();
@@ -170,8 +170,8 @@ function PatternPreviewDialog({
       }}
       onMouseDown={event => event.target === event.currentTarget && onClose()}
     >
-      <div className="pattern-preview-card">
-        <div className="pattern-preview-heading">
+      <div className="pattern-preview-card max-[641px]:h-auto! max-[641px]:max-h-[78dvh]!">
+        <div className="pattern-preview-heading max-[641px]:flex-col! max-[641px]:items-start!">
           <div>
             <h2 id="pattern-preview-title">图纸预览</h2>
             <p>
@@ -180,7 +180,7 @@ function PatternPreviewDialog({
               · 方格、色号和用量齐全
             </p>
           </div>
-          <div className="pattern-preview-actions">
+          <div className="pattern-preview-actions max-[641px]:w-full! max-[641px]:[&>[data-slot=button]]:min-w-0! max-[641px]:[&>[data-slot=button]]:flex-1!">
             <Button
               className="pattern-preview-copy"
               variant="outline"
@@ -233,7 +233,7 @@ function PatternPreviewDialog({
             <X />
           </Button>
         </div>
-        <div className="pattern-preview-scroll">
+        <div className="pattern-preview-scroll max-[641px]:max-h-[calc(78dvh-68px)]! max-[641px]:p-3!">
           <img
             src={src}
             alt={`${name}图纸预览`}
@@ -261,10 +261,10 @@ function ToolColorProperties({
 }) {
   return (
     <aside
-      className="workbench-tool-properties"
+      className="workbench-tool-properties max-[980px]:top-[calc(var(--workbench-control-size)+20px)]! max-[980px]:h-[calc(var(--workbench-control-size)+8px)]! max-[980px]:p-[3px]! min-[980px]:top-16! min-[980px]:right-auto! min-[980px]:bottom-auto! min-[980px]:left-3! min-[980px]:grid! min-[980px]:h-auto! min-[980px]:w-[198px]! min-[980px]:gap-2! min-[980px]:overflow-visible! min-[980px]:p-2.5!"
       aria-label="编辑颜色"
     >
-      <div className="workbench-tool-properties-heading">
+      <div className="workbench-tool-properties-heading min-[980px]:justify-between! min-[980px]:p-0!">
         <span>颜色</span>
         <small>
           {total}
@@ -275,12 +275,12 @@ function ToolColorProperties({
           色
         </small>
       </div>
-      <div className="workbench-tool-colors">
+      <div className="workbench-tool-colors min-[980px]:flex-wrap!">
         {colors.map(color => (
           <button
             type="button"
             key={color.id}
-            className="workbench-tool-color"
+            className="workbench-tool-color max-[980px]:size-[var(--workbench-control-size)]! max-[980px]:min-h-[var(--workbench-control-size)]! max-[980px]:min-w-[var(--workbench-control-size)]!"
             style={colorTileStyle(color)}
             aria-label={`选择颜色 ${color.id}`}
             aria-pressed={selected === color.id}
@@ -879,7 +879,9 @@ export function Result({
   }, [preview]);
 
   return (
-    <main className={`pattern-workbench${panelOpen ? " has-panel" : ""}`}>
+    <main
+      className={`pattern-workbench max-[769px]:[--workbench-control-size:clamp(34px,8.15vw,40px)]! max-[769px]:[--panel-control-size:44px]! min-[980px]:[&.has-panel]:grid-cols-[minmax(0,1fr)_var(--workbench-panel-width)]! max-[641px]:h-[calc(100dvh-56px)]! max-[641px]:[--panel-control-size:40px]!${panelOpen ? " has-panel" : ""}`}
+    >
       <section
         ref={canvasRef}
         className={`workbench-canvas${showToolColors ? " has-tool-properties" : ""}`}
@@ -909,12 +911,12 @@ export function Result({
           onTransform={(_, state) => setScale(state.scale)}
         >
           <TransformComponent
-            wrapperClass="workbench-transform-wrapper"
+            wrapperClass="workbench-transform-wrapper max-[980px]:inset-[calc(var(--workbench-control-size)*2+32px)_8px_calc(var(--workbench-control-size)+20px)]! max-[980px]:[.has-tool-properties_&]:inset-[calc(var(--workbench-control-size)*3+44px)_8px_calc(var(--workbench-control-size)+20px)]! min-[980px]:inset-[58px_16px_54px]!"
             contentClass="workbench-transform-content"
           >
             <div
               ref={fitTarget}
-              className="workbench-board"
+              className="workbench-board max-[641px]:w-[min(84vmin,760px)]!"
               style={{ aspectRatio: `${pattern.width} / ${pattern.height}` }}
             >
               <PatternCanvas
@@ -935,7 +937,7 @@ export function Result({
         </TransformWrapper>
 
         <div
-          className="workbench-status"
+          className="workbench-status max-[980px]:top-[calc(var(--workbench-control-size)+20px)]! max-[980px]:[.has-tool-properties_&]:top-[calc(var(--workbench-control-size)*2+32px)]! min-[980px]:top-3! min-[980px]:left-3! min-[980px]:max-w-[220px]!"
           role="status"
           aria-live="polite"
         >
@@ -950,7 +952,7 @@ export function Result({
         </div>
 
         <div
-          className="workbench-toolbar"
+          className="workbench-toolbar @max-[1121px]/workbench-canvas:[&_kbd]:hidden! max-[980px]:right-auto! max-[980px]:w-max! max-[980px]:max-w-[calc(100%-var(--workbench-control-size)*3-34px)]! max-[980px]:gap-0.5! max-[980px]:rounded-[10px]! max-[980px]:p-[3px]! min-[980px]:right-auto! min-[980px]:left-1/2! min-[980px]:w-max! min-[980px]:max-w-[calc(100%-430px)]! min-[980px]:-translate-x-1/2!"
           role="toolbar"
           aria-label="编辑工具"
         >
@@ -1028,7 +1030,7 @@ export function Result({
         )}
 
         <div
-          className="workbench-actions"
+          className="workbench-actions max-[980px]:top-2! max-[980px]:gap-0.5! max-[980px]:rounded-[10px]! max-[980px]:p-[3px]! min-[980px]:top-3! min-[980px]:right-3! max-[641px]:max-w-[calc(50%-12px)]!"
           aria-label="图纸操作"
         >
           <ControlTooltip label="分享图纸">
@@ -1072,7 +1074,7 @@ export function Result({
         </div>
 
         <div
-          className="workbench-lower-left"
+          className="workbench-lower-left @max-[841px]/workbench-canvas:[&>button]:w-[var(--workbench-control-size)]! @max-[841px]/workbench-canvas:[&>button]:px-0! @max-[841px]/workbench-canvas:[&>button>span]:hidden! max-[980px]:gap-0.5! max-[980px]:rounded-[10px]! max-[980px]:p-[3px]! min-[980px]:right-auto! min-[980px]:bottom-3! min-[980px]:left-3!"
           aria-label="画布与历史控制"
         >
           <ControlTooltip
@@ -1168,7 +1170,7 @@ export function Result({
         </div>
 
         <div
-          className="workbench-lower-right"
+          className="workbench-lower-right @max-[841px]/workbench-canvas:[&>button]:w-[var(--workbench-control-size)]! @max-[841px]/workbench-canvas:[&>button]:px-0! @max-[841px]/workbench-canvas:[&>button>span]:hidden! max-[980px]:gap-0.5! max-[980px]:rounded-[10px]! max-[980px]:p-[3px]! min-[980px]:right-3! min-[980px]:bottom-3!"
           aria-label="图纸显示方式"
         >
           <ControlTooltip
@@ -1228,17 +1230,17 @@ export function Result({
         <>
           <button
             type="button"
-            className="workbench-sheet-backdrop"
+            className="workbench-sheet-backdrop min-[980px]:hidden! max-[641px]:[inset-block-start:56px]!"
             aria-label="关闭设置"
             onClick={() => setPanelOpen(false)}
           />
           <aside
             id="workbench-panel"
-            className="workbench-panel"
+            className="workbench-panel min-[980px]:static! min-[980px]:z-auto! min-[980px]:h-auto! min-[980px]:w-[var(--workbench-panel-width)]! min-[980px]:border-t-0! min-[980px]:border-l! min-[980px]:border-l-border! min-[980px]:shadow-[-12px_0_30px_rgb(65_37_49/0.07)]! max-[641px]:h-auto! max-[641px]:max-h-[min(62dvh,520px)]!"
             role="dialog"
             aria-label="图纸设置"
           >
-            <header className="workbench-panel-header">
+            <header className="workbench-panel-header max-[641px]:min-h-12! max-[641px]:py-0.5!">
               <div
                 role="tablist"
                 aria-label="设置分类"
@@ -1274,7 +1276,7 @@ export function Result({
             <div className="workbench-panel-scroll">
               {panelTab === "adjust" && (
                 <section
-                  className="panel-section"
+                  className="panel-section max-[641px]:gap-[11px]! max-[641px]:px-3! max-[641px]:pt-2.5! max-[641px]:pb-[calc(14px+env(safe-area-inset-bottom))]!"
                   aria-label="调整图纸"
                 >
                   <div className="panel-switch-row">
@@ -1307,7 +1309,7 @@ export function Result({
                       />
                     </div>
                   </div>
-                  <label className="panel-range">
+                  <label className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!">
                     <span>
                       格数
                       <output>
@@ -1328,7 +1330,7 @@ export function Result({
                         })}
                     />
                   </label>
-                  <label className="panel-range">
+                  <label className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!">
                     <span>
                       颜色上限
                       <output>
@@ -1349,7 +1351,7 @@ export function Result({
                         })}
                     />
                   </label>
-                  <label className="panel-range">
+                  <label className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!">
                     <span>
                       颜色合并程度
                       <output>{draftSettings.colorMerge}</output>
@@ -1372,7 +1374,7 @@ export function Result({
                   </label>
                   <fieldset>
                     <legend>处理模式</legend>
-                    <div className="panel-processing-modes">
+                    <div className="panel-processing-modes max-[641px]:[&_button]:min-h-[52px]!">
                       {(
                         [
                           {
@@ -1429,7 +1431,7 @@ export function Result({
 
               {panelTab === "colors" && (
                 <section
-                  className="panel-section"
+                  className="panel-section max-[641px]:gap-[11px]! max-[641px]:px-3! max-[641px]:pt-2.5! max-[641px]:pb-[calc(14px+env(safe-area-inset-bottom))]!"
                   aria-labelledby="colors-title"
                 >
                   <div className="panel-section-heading">
@@ -1507,7 +1509,7 @@ export function Result({
 
               {panelTab === "versions" && (
                 <section
-                  className="panel-section"
+                  className="panel-section max-[641px]:gap-[11px]! max-[641px]:px-3! max-[641px]:pt-2.5! max-[641px]:pb-[calc(14px+env(safe-area-inset-bottom))]!"
                   aria-labelledby="versions-title"
                 >
                   <div className="panel-section-heading">
@@ -1521,7 +1523,7 @@ export function Result({
                       个版本
                     </small>
                   </div>
-                  <div className="panel-manual-version">
+                  <div className="panel-manual-version min-[980px]:[&_input]:h-[34px]! min-[980px]:[&_input]:min-h-[34px]! min-[980px]:[&_button]:h-[34px]! min-[980px]:[&_button]:min-h-[34px]! min-[980px]:[&_input]:px-[9px]! min-[980px]:[&_input]:text-[0.72rem]! max-[641px]:[&_input]:h-10! max-[641px]:[&_input]:min-h-10! max-[641px]:[&_input]:text-[0.78rem]! max-[641px]:[&_button]:h-9! max-[641px]:[&_button]:min-h-9! max-[641px]:[&_button]:px-2.5! max-[641px]:[&_button]:text-[0.72rem]! max-[641px]:[&_button]:font-[650]!">
                     <label htmlFor="version-name">给当前版本取名</label>
                     <div>
                       <input
@@ -1539,7 +1541,7 @@ export function Result({
                       </Button>
                     </div>
                   </div>
-                  <div className="panel-version-list">
+                  <div className="panel-version-list min-[980px]:[&_button]:h-[34px]! min-[980px]:[&_button]:min-h-[34px]! max-[641px]:[&_article]:px-[9px]! max-[641px]:[&_article]:py-2! max-[641px]:[&_article>span]:px-1.5! max-[641px]:[&_article>span]:py-[3px]! max-[641px]:[&_article>span]:text-[0.66rem]! max-[641px]:[&_strong]:text-[0.82rem]! max-[641px]:[&_strong]:leading-[1.25]! max-[641px]:[&_small]:mt-px! max-[641px]:[&_small]:text-[0.7rem]! max-[641px]:[&_small]:leading-[1.2]! max-[641px]:[&_button]:h-9! max-[641px]:[&_button]:min-h-9! max-[641px]:[&_button]:px-2.5! max-[641px]:[&_button]:text-[0.72rem]! max-[641px]:[&_button]:font-[650]!">
                     {[...project.versions].reverse().map(version => (
                       <article key={version.id}>
                         <span className={version.kind}>

@@ -39,18 +39,27 @@ import {
   importBackup,
   saveProject,
 } from "@/lib/projects";
+import { cn } from "@/lib/utils";
 
 function UploadCard({
+  className,
   onFile,
   onSample,
 }: {
+  className?: string;
   onFile: (file?: File) => void;
   onSample: () => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   return (
-    <div className="upload-card">
+    <div
+      className={cn(
+        "flex min-h-[360px] flex-col gap-2.5 rounded-[22px] bg-workbench p-[18px] text-workbench-foreground shadow-[0_26px_45px_rgb(24_34_53/0.2)] [transform:rotate(1.5deg)] [&>[data-slot=button]]:border-[#d9ccd0] [&>[data-slot=button]]:bg-white [&>[data-slot=button]]:text-[#182235] max-[641px]:min-h-80! max-[641px]:[transform:none]!",
+        className,
+      )}
+    >
       <input
+        className="hidden"
         ref={input}
         type="file"
         accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
@@ -58,14 +67,16 @@ function UploadCard({
         onChange={event => onFile(event.target.files?.[0])}
       />
       <button
-        className="upload-action"
+        className="flex min-h-[245px]! flex-1 cursor-pointer flex-col items-center justify-center gap-2.5 rounded-2xl border-2 border-dashed border-[#64738a] bg-workbench-raised text-inherit hover:border-primary"
         onClick={() => input.current?.click()}
       >
-        <span>
+        <span className="grid size-[62px] place-items-center rounded-[18px] bg-primary text-white">
           <Camera size={30} />
         </span>
-        <strong>拍照或选择图片</strong>
-        <small>JPG、PNG、WebP、HEIC · 不超过 10MB</small>
+        <strong className="text-[1.1rem]">拍照或选择图片</strong>
+        <small className="text-center text-workbench-muted">
+          JPG、PNG、WebP、HEIC · 不超过 10MB
+        </small>
       </button>
       <Button
         variant="outline"
@@ -86,14 +97,19 @@ export function NewProject({
   onSample: () => void;
 }) {
   return (
-    <main className="workspace new-page">
-      <section className="new-project-card">
+    <main className="workspace grid min-h-[calc(100dvh-60px)] items-center max-[640px]:min-h-[calc(100dvh-56px)] max-[641px]:w-[calc(100%-20px)]! max-[641px]:pt-2.5! max-[640px]:pb-2.5!">
+      <section className="grid grid-cols-[1fr_minmax(320px,420px)] items-center gap-[clamp(32px,7vw,80px)] rounded-3xl border border-border bg-card p-[clamp(24px,5vw,64px)] max-[900px]:grid-cols-[1fr_340px] max-[640px]:grid-cols-1 max-[640px]:gap-5 max-[640px]:rounded-[19px] max-[640px]:px-4 max-[640px]:pt-6 max-[640px]:pb-4">
         <div>
           <span className="eyebrow">新建图纸</span>
-          <h1>选择一张图片开始</h1>
-          <p>上传后只需裁切画面并选择本机或 AI，详细参数都可以在生成后调整。</p>
+          <h1 className="mt-2.5 mb-3.5 text-[clamp(2rem,4vw,3.6rem)] leading-[1.05] max-[640px]:text-[2.2rem]">
+            选择一张图片开始
+          </h1>
+          <p className="max-w-[42ch] leading-[1.75] text-muted-foreground">
+            上传后只需裁切画面并选择本机或 AI，详细参数都可以在生成后调整。
+          </p>
         </div>
         <UploadCard
+          className="min-h-[390px]! [transform:none]! max-[640px]:min-h-80!"
           onFile={onFile}
           onSample={onSample}
         />
@@ -174,24 +190,26 @@ export function Home({
     }
   }
   return (
-    <main className="workspace home-page">
-      <section className="hero">
-        <div className="hero-copy">
+    <main className="workspace home-page max-[641px]:w-[calc(100%-20px)]! max-[641px]:pt-2.5!">
+      <section className="grid min-h-[520px] grid-cols-[1.05fr_0.8fr] items-center gap-[clamp(28px,6vw,80px)] overflow-hidden rounded-[28px] border border-border [background:radial-gradient(circle_at_90%_5%,#e5f8fb_0,transparent_32%),radial-gradient(circle_at_5%_90%,#fde6f0_0,transparent_32%),var(--card)] p-[clamp(28px,5vw,70px)] shadow-[0_20px_60px_rgb(24_34_53/0.07)] max-[901px]:grid-cols-[1fr_340px] max-[641px]:min-h-0 max-[641px]:grid-cols-1 max-[641px]:gap-[22px] max-[641px]:rounded-[19px] max-[641px]:px-4 max-[641px]:pt-7 max-[641px]:pb-4">
+        <div>
           <span className="eyebrow">MARD 291 色 · AI 生成图纸</span>
-          <h1>一张照片，变成真正能照着拼的图纸</h1>
-          <p>
+          <h1 className="mt-3 mb-[18px] max-w-[680px] text-[clamp(2.2rem,5.4vw,4.6rem)] leading-[1.02] tracking-[-0.055em] max-[640px]:text-[2.5rem]">
+            一张照片，变成真正能照着拼的图纸
+          </h1>
+          <p className="max-w-[600px] text-[1.05rem] leading-[1.8] text-muted-foreground max-[640px]:text-[0.9rem]">
             先把照片整理成清晰图纸，再减少零碎颜色并放到合适的豆板上。也可以直接使用原图。
           </p>
-          <div className="hero-points">
-            <span>
+          <div className="mt-7 flex flex-wrap gap-x-5 gap-y-3 text-[0.82rem] font-bold max-[640px]:mt-[18px] max-[640px]:grid">
+            <span className="flex items-center gap-[5px] [&_svg]:w-[17px] [&_svg]:text-success">
               <Check />
               白色豆与空白格分开
             </span>
-            <span>
+            <span className="flex items-center gap-[5px] [&_svg]:w-[17px] [&_svg]:text-success">
               <Check />
               作品只保存在设备
             </span>
-            <span>
+            <span className="flex items-center gap-[5px] [&_svg]:w-[17px] [&_svg]:text-success">
               <Check />
               无需注册
             </span>
@@ -202,13 +220,13 @@ export function Home({
           onSample={onSample}
         />
       </section>
-      <section className="projects-section">
-        <div className="section-heading">
+      <section className="pt-[70px] max-[640px]:pt-11">
+        <div className="mb-5 flex items-end justify-between gap-6 max-[640px]:flex-col max-[640px]:items-start">
           <div>
             <span className="eyebrow">只保存在当前设备</span>
-            <h2>我的作品</h2>
+            <h2 className="mt-[5px] text-[1.9rem]">我的作品</h2>
           </div>
-          <div>
+          <div className="flex gap-2 max-[640px]:w-full max-[640px]:gap-1 max-[640px]:[&>*]:flex-1">
             <input
               ref={backup}
               type="file"
@@ -235,7 +253,7 @@ export function Home({
         </div>
         {message && (
           <p
-            className="status-message"
+            className="flex items-center gap-[9px] rounded-[10px] border border-[#e7bd6c] bg-[#fff5dc] px-3.5 py-3 text-[0.76rem] leading-[1.5] text-[#674b12] [&>div]:ml-auto [&>div]:flex [&>div]:gap-[5px] max-[641px]:flex-wrap max-[641px]:items-start max-[641px]:[&>div]:ml-0 max-[641px]:[&>div]:w-full"
             role="status"
           >
             {message}
@@ -243,21 +261,21 @@ export function Home({
         )}
         {projects.length
           ? (
-              <div className="project-grid">
+              <div className="grid grid-cols-3 gap-4 max-[900px]:grid-cols-2 max-[640px]:grid-cols-1">
                 {projects.map(project => (
                   <article
-                    className="project-card"
+                    className="min-w-0 rounded-[18px] border border-border bg-card p-3 shadow-[0_4px_16px_rgb(24_34_53/0.05)]"
                     key={project.id}
                   >
                     <button
-                      className="project-preview"
+                      className="relative aspect-[4/3] w-full cursor-pointer overflow-hidden rounded-[13px] border-0 bg-[#26344a] [&_canvas]:h-full [&_canvas]:w-full! [&_canvas]:object-contain"
                       onClick={() => onOpen(project)}
                     >
                       <PatternCanvas
                         pattern={project.pattern}
                         showGrid={false}
                       />
-                      <span>
+                      <span className="absolute right-2 bottom-2 rounded-[7px] bg-[rgb(24_34_53/0.78)] px-[7px] py-1 text-[0.65rem] text-white">
                         {project.pattern.width}
                         ×
                         {project.pattern.height}
@@ -266,8 +284,10 @@ export function Home({
                       </span>
                     </button>
                     <div>
-                      <h3>{project.name}</h3>
-                      <p>
+                      <h3 className="mt-3 mb-[3px] text-[0.98rem]">
+                        {project.name}
+                      </h3>
+                      <p className="mt-0 mb-3 text-[0.7rem] text-muted-foreground">
                         {new Date(project.updatedAt).toLocaleDateString("zh-CN")}
                         {" "}
                         ·
@@ -280,7 +300,7 @@ export function Home({
                         {" "}
                         个版本
                       </p>
-                      <div className="card-actions">
+                      <div className="flex gap-1 max-[640px]:gap-1 [&>:first-child]:mr-auto">
                         <Button
                           size="sm"
                           onClick={() => onOpen(project)}
@@ -344,7 +364,7 @@ export function Home({
               </div>
             )
           : (
-              <div className="empty-projects">
+              <div className="flex flex-col items-center gap-[7px] rounded-[18px] border border-dashed border-border px-5 py-[55px] text-center text-muted-foreground [&_p]:m-0 [&_p]:text-[0.8rem] [&_strong]:text-[var(--ink)]">
                 <Grid2X2 size={26} />
                 <strong>还没有作品</strong>
                 <p>生成第一张图纸后，原图、设置和版本都会保存在这里。</p>

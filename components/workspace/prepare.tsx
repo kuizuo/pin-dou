@@ -125,14 +125,14 @@ function CropPreview({
   return (
     <div
       ref={area}
-      className="source-preview"
+      className="relative grid h-[min(66dvh,720px)] min-h-[440px] place-items-center overflow-hidden bg-[#f8f3f5] [background-image:linear-gradient(45deg,#eee5e8_25%,transparent_25%),linear-gradient(-45deg,#eee5e8_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#eee5e8_75%),linear-gradient(-45deg,transparent_75%,#eee5e8_75%)] [background-position:0_0,0_12px,12px_-12px,-12px_0] [background-size:24px_24px] max-[901px]:h-[min(58dvh,590px)] max-[901px]:min-h-[400px] max-[641px]:h-[48dvh] max-[641px]:min-h-80"
       role="group"
       aria-label="图片裁切区域"
     >
       {preview && frame.width
         ? (
             <ReactCrop
-              className="crop-frame"
+              className="crop-frame rounded-lg border border-[#b9aeb2] bg-card shadow-[0_18px_45px_rgb(65_37_49/0.18)] [&_img]:block [&_img]:size-full"
               style={frame}
               crop={crop}
               minWidth={48}
@@ -163,7 +163,9 @@ function CropPreview({
         : (
             <LoaderCircle className="spin" />
           )}
-      <span className="crop-hint">拖动裁切框移动 · 拉动边角调整大小</span>
+      <span className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-lg bg-[rgb(15_23_38/0.8)] px-2.5 py-1.5 text-[0.68rem] whitespace-nowrap text-white">
+        拖动裁切框移动 · 拉动边角调整大小
+      </span>
     </div>
   );
 }
@@ -185,7 +187,7 @@ function AiPreviewDialog({
   return (
     <dialog
       ref={dialog}
-      className="pattern-preview-dialog"
+      className="pattern-preview-dialog max-[641px]:h-auto! max-[641px]:max-h-[78dvh]! max-[641px]:overflow-hidden!"
       aria-labelledby="ai-preview-title"
       onCancel={(event) => {
         event.preventDefault();
@@ -193,8 +195,8 @@ function AiPreviewDialog({
       }}
       onMouseDown={event => event.target === event.currentTarget && onClose()}
     >
-      <div className="pattern-preview-card">
-        <div className="pattern-preview-heading">
+      <div className="pattern-preview-card max-[641px]:h-auto! max-[641px]:max-h-[78dvh]!">
+        <div className="pattern-preview-heading max-[641px]:flex-col! max-[641px]:items-start!">
           <div>
             <h2 id="ai-preview-title">AI 智能图纸预览</h2>
             <p>检查主体、轮廓和配色，不满意可以返回后重新生成</p>
@@ -206,7 +208,7 @@ function AiPreviewDialog({
             返回
           </Button>
         </div>
-        <div className="pattern-preview-scroll">
+        <div className="pattern-preview-scroll max-[641px]:max-h-[calc(78dvh-68px)]! max-[641px]:p-3!">
           <img
             src={src}
             alt="AI 智能图纸大图预览"
@@ -234,12 +236,14 @@ function VariantCard({
 }) {
   const title = "AI 智能图纸";
   return (
-    <article className={`ai-variant-card${candidate ? " ready" : ""}`}>
+    <article
+      className={`grid min-w-0 grid-cols-[140px_minmax(0,1fr)_auto] items-center gap-3 rounded-[15px] border border-border p-2.5 [&_small]:mt-1 [&_small]:block [&_small]:text-[0.67rem] [&_small]:leading-[1.4] [&_small]:text-muted-foreground [&_small]:[overflow-wrap:anywhere] [&_strong]:block max-[901px]:grid-cols-[108px_minmax(0,1fr)] max-[641px]:grid-cols-[82px_minmax(0,1fr)_auto] ${candidate ? "bg-card" : "bg-muted"}`}
+    >
       {candidate
         ? (
             <button
               type="button"
-              className="ai-variant-preview"
+              className="relative grid h-[108px] w-[140px] place-items-center overflow-hidden rounded-[10px] border-0 bg-[#eee7e9] p-0 text-muted-foreground [&_img]:size-full [&_img]:object-contain [&_span]:absolute [&_span]:right-1.5 [&_span]:bottom-1.5 [&_span]:flex [&_span]:items-center [&_span]:gap-1 [&_span]:rounded-[7px] [&_span]:bg-[rgb(24_34_53/0.78)] [&_span]:px-1.5 [&_span]:py-1 [&_span]:text-[0.6rem] [&_span]:text-white [&_span_svg]:size-[13px] max-[901px]:w-[108px] max-[641px]:h-[74px] max-[641px]:w-[82px]"
               aria-label="预览 AI 智能图纸大图"
               onClick={() => onPreview(candidate.image)}
             >
@@ -254,7 +258,7 @@ function VariantCard({
             </button>
           )
         : (
-            <div className="ai-variant-preview">
+            <div className="relative grid h-[108px] w-[140px] place-items-center overflow-hidden rounded-[10px] bg-[#eee7e9] text-muted-foreground max-[901px]:w-[108px] max-[641px]:h-[74px] max-[641px]:w-[82px]">
               {busy ? <LoaderCircle className="spin" /> : <ImageIcon />}
             </div>
           )}
@@ -269,11 +273,17 @@ function VariantCard({
       </div>
       {candidate
         ? (
-            <Button onClick={() => onChoose(candidate)}>使用这个方案</Button>
+            <Button
+              className="max-[901px]:col-span-full! max-[901px]:w-full! max-[641px]:col-auto! max-[641px]:w-auto! max-[641px]:px-2.5!"
+              onClick={() => onChoose(candidate)}
+            >
+              使用这个方案
+            </Button>
           )
         : failure
           ? (
               <Button
+                className="max-[901px]:col-span-full! max-[901px]:w-full! max-[641px]:col-auto! max-[641px]:w-auto! max-[641px]:px-2.5!"
                 variant="outline"
                 onClick={onRetry}
               >
@@ -349,9 +359,9 @@ export function Prepare({
     }
   }
   return (
-    <main className="prepare-page">
-      <header className="prepare-header">
-        <div className="prepare-nav">
+    <main className="mx-auto w-[min(1320px,calc(100%-40px))] pt-7 pb-[120px] max-[640px]:w-[calc(100%-20px)] max-[640px]:pt-2.5 max-[640px]:pb-[104px]">
+      <header className="mb-3.5 flex min-h-[58px] items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             onClick={onBack}
@@ -368,11 +378,14 @@ export function Prepare({
             >
               <RefreshCw />
               切换示例
-              <span className="sample-count">{`${samplePosition}/${sampleTotal}`}</span>
+              <span className="text-[0.65rem] text-muted-foreground">
+                {`${samplePosition}/${sampleTotal}`}
+              </span>
             </Button>
           )}
         </div>
         <Button
+          className="max-[640px]:px-2.5"
           disabled={busy}
           onClick={() =>
             showVariants
@@ -396,14 +409,14 @@ export function Prepare({
         </Button>
       </header>
       {!showVariants && (
-        <section className="prepare-stage">
+        <section className="overflow-hidden rounded-[22px] border border-border bg-card shadow-[0_18px_50px_rgb(69_43_53/0.08)]">
           <CropPreview
             draft={draft}
             setDraft={setDraft}
           />
-          <div className="prepare-controls">
+          <div className="flex min-h-[86px] items-center justify-between gap-[18px] border-t border-border p-3 max-[901px]:flex-col max-[901px]:items-stretch max-[641px]:gap-3">
             <div
-              className="transform-tools"
+              className="flex min-w-0 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:min-h-11 [&>*]:flex-none [&_[data-slot=button]]:border-border! [&_[data-slot=button]]:bg-muted! [&_[data-slot=button]]:text-foreground! max-[641px]:grid max-[641px]:w-full max-[641px]:grid-cols-3 max-[641px]:gap-1.5 max-[641px]:overflow-visible max-[641px]:p-0 max-[641px]:[&>*]:w-full max-[641px]:[&>*]:min-w-0 max-[641px]:[&>*]:px-1.5"
               aria-label="图片方向"
             >
               <Button
@@ -444,9 +457,12 @@ export function Prepare({
                 垂直翻转
               </Button>
             </div>
-            <fieldset className="generation-mode">
-              <legend>生成方式</legend>
-              <div className="segmented">
+            <fieldset
+              className="m-0 flex min-w-0 flex-wrap items-center justify-end gap-2.5 border-0 p-0 max-[901px]:flex-col max-[901px]:items-start max-[641px]:grid max-[641px]:w-full max-[641px]:grid-cols-[minmax(0,1fr)_44px] max-[641px]:items-start max-[641px]:gap-2"
+              data-ai-mode={aiMode}
+            >
+              <legend className="sr-only">生成方式</legend>
+              <div className="flex gap-[5px] [&_button]:inline-flex [&_button]:min-h-11 [&_button]:items-center [&_button]:justify-center [&_button]:gap-1.5 [&_button]:rounded-[10px] [&_button]:border [&_button]:border-border [&_button]:bg-muted [&_button]:px-4 [&_button]:font-[750] [&_button]:whitespace-nowrap [&_button]:text-foreground [&_button.active]:border-primary [&_button.active]:bg-accent [&_button.active]:text-accent-foreground [&_button.active]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary),transparent_35%)] [&_svg]:w-[17px] max-[641px]:col-span-full max-[641px]:row-start-1 max-[641px]:w-full max-[641px]:gap-1 max-[641px]:[[data-ai-mode=true]_&]:col-span-1 max-[641px]:[&_button]:min-w-0 max-[641px]:[&_button]:flex-1 max-[641px]:[&_button]:px-2">
                 <button
                   type="button"
                   aria-pressed={!aiMode}
@@ -466,12 +482,13 @@ export function Prepare({
                 </button>
               </div>
               {aiMode && (
-                <div className="ai-mode-summary">
-                  <p>
+                <div className="flex items-center gap-[7px] max-[901px]:w-full max-[901px]:justify-between max-[641px]:contents">
+                  <p className="m-0 flex max-w-[430px] items-center gap-1.5 text-[0.68rem] leading-[1.45] text-muted-foreground [&>svg]:w-[17px] [&>svg]:text-primary max-[901px]:max-w-none max-[641px]:col-span-full max-[641px]:row-start-2 max-[641px]:min-w-0 max-[641px]:items-start max-[641px]:px-0.5 max-[641px]:pt-0.5">
                     <WandSparkles />
                     AI 会整理主体、轮廓和配色；图片仅用于本次生成。
                   </p>
                   <Button
+                    className="flex-none max-[641px]:col-start-2! max-[641px]:row-start-1! max-[641px]:size-11! max-[641px]:p-0!"
                     type="button"
                     variant="outline"
                     size="icon-sm"
@@ -488,10 +505,10 @@ export function Prepare({
       )}
       {showVariants && (
         <section
-          className="ai-variants"
+          className="rounded-[20px] border border-border bg-card p-5 shadow-[0_12px_36px_rgb(69_43_53/0.06)] max-[641px]:px-2.5 max-[641px]:py-3.5"
           aria-label="AI 处理方案"
         >
-          <div className="ai-variants-heading">
+          <div className="mb-3.5 flex items-end justify-between gap-[18px] [&_h2]:mt-1 [&_h2]:mb-0 [&_h2]:text-xl [&>p]:m-0 [&>p]:flex [&>p]:items-center [&>p]:gap-1.5 [&>p]:text-[0.72rem] [&>p]:text-muted-foreground max-[641px]:flex-col max-[641px]:items-start">
             <div>
               <span className="eyebrow">AI 智能图纸</span>
               <h2>
@@ -509,7 +526,7 @@ export function Prepare({
               </p>
             )}
           </div>
-          <div className="ai-variant-grid">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
             <VariantCard
               candidate={candidates[0]}
               failure={failures[0]}
@@ -523,7 +540,7 @@ export function Prepare({
       )}
       {!showVariants && message && (
         <p
-          className="prepare-message"
+          className="mt-3.5 flex items-center gap-2 rounded-[11px] border border-[#e7bd6c] bg-[#fff5dc] px-3.5 py-[11px] text-[0.74rem] text-[#674b12]"
           role="status"
         >
           {busy && <LoaderCircle className="spin" />}

@@ -444,16 +444,16 @@ export function Workspace({
   );
 
   return (
-    <div className="app-shell">
+    <div className="min-h-dvh">
       {header}
       {stage === "loading" && (
-        <main className="workspace route-state">
+        <main className="workspace route-state max-[641px]:w-[calc(100%-20px)]! max-[641px]:pt-2.5!">
           <LoaderCircle className="spin" />
           <p>正在打开图纸…</p>
         </main>
       )}
       {stage === "missing" && (
-        <main className="workspace route-state">
+        <main className="workspace route-state max-[641px]:w-[calc(100%-20px)]! max-[641px]:pt-2.5!">
           <h1>找不到这张图纸</h1>
           <p>它可能已被删除，或只保存在另一台设备上。</p>
           <Button onClick={home}>返回我的作品</Button>

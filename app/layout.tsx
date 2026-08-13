@@ -33,7 +33,9 @@ export default function RootLayout({
       lang="zh-CN"
       data-scroll-behavior="smooth"
     >
-      <body className={bodyFont.variable}>
+      <body
+        className={`${bodyFont.variable} max-[641px]:[&_button]:min-h-11 max-[641px]:[&_button]:min-w-11 max-[641px]:[&_select]:min-h-11 max-[641px]:[&_select]:min-w-11 max-[641px]:[&_input]:min-h-11 max-[641px]:[&_input]:min-w-11 max-[641px]:[&_input[type=range]]:h-11`}
+      >
         <TooltipProvider delay={350}>{children}</TooltipProvider>
       </body>
     </html>

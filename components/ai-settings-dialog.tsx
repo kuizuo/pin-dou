@@ -47,7 +47,7 @@ export function AiSettingsDialog({
   return (
     <dialog
       ref={dialog}
-      className="ai-settings-dialog"
+      className="m-auto max-h-[calc(100dvh-32px)] w-[min(520px,calc(100%-32px))] max-w-none overflow-visible rounded-[20px] border-0 bg-transparent p-0 backdrop:bg-[rgb(19_22_30/0.58)] backdrop:backdrop-blur-[3px]"
       aria-labelledby="ai-settings-title"
       onCancel={(event) => {
         event.preventDefault();
@@ -55,12 +55,19 @@ export function AiSettingsDialog({
       }}
       onMouseDown={event => event.target === event.currentTarget && onClose()}
     >
-      <div className="ai-settings-card">
-        <header>
+      <div className="grid max-h-[calc(100dvh-32px)] gap-[18px] overflow-y-auto rounded-[20px] border border-border bg-card p-[22px] shadow-[0_28px_80px_rgb(28_20_27/0.28)] max-[640px]:px-3.5 max-[640px]:py-[18px]">
+        <header className="flex items-start justify-between gap-4">
           <div>
             <span className="eyebrow">AI 图片处理</span>
-            <h2 id="ai-settings-title">选择处理服务</h2>
-            <p>Cloudflare 可直接使用；Gemini 使用你自己的密钥。</p>
+            <h2
+              className="mt-[3px] mb-[5px] text-[1.35rem]"
+              id="ai-settings-title"
+            >
+              选择处理服务
+            </h2>
+            <p className="m-0 text-[0.72rem] text-muted-foreground">
+              Cloudflare 可直接使用；Gemini 使用你自己的密钥。
+            </p>
           </div>
           <Button
             type="button"
@@ -73,11 +80,12 @@ export function AiSettingsDialog({
           </Button>
         </header>
         <div
-          className="ai-provider-options"
+          className="grid grid-cols-2 gap-2.5 max-[640px]:grid-cols-1"
           role="group"
           aria-label="AI 处理服务"
         >
           <button
+            className="grid min-h-[82px]! grid-cols-[24px_minmax(0,1fr)_18px] items-center gap-[9px] rounded-[13px] border border-border bg-muted p-[13px] text-left text-foreground aria-pressed:border-primary aria-pressed:bg-accent aria-pressed:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary),transparent_35%)] [&>svg]:w-5 [&>svg]:text-primary [&>svg:last-child]:w-4 [&_small]:mt-[3px] [&_small]:block [&_small]:text-[0.63rem] [&_small]:leading-[1.35] [&_small]:text-muted-foreground [&_strong]:block"
             type="button"
             aria-pressed={provider === "cloudflare"}
             onClick={() => onProviderChange("cloudflare")}
@@ -90,6 +98,7 @@ export function AiSettingsDialog({
             {provider === "cloudflare" && <Check />}
           </button>
           <button
+            className="grid min-h-[82px]! grid-cols-[24px_minmax(0,1fr)_18px] items-center gap-[9px] rounded-[13px] border border-border bg-muted p-[13px] text-left text-foreground aria-pressed:border-primary aria-pressed:bg-accent aria-pressed:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary),transparent_35%)] [&>svg]:w-5 [&>svg]:text-primary [&>svg:last-child]:w-4 [&_small]:mt-[3px] [&_small]:block [&_small]:text-[0.63rem] [&_small]:leading-[1.35] [&_small]:text-muted-foreground [&_strong]:block"
             type="button"
             aria-pressed={provider === "gemini"}
             onClick={() => onProviderChange("gemini")}
@@ -114,13 +123,17 @@ export function AiSettingsDialog({
               </div>
             )
           : (
-              <div className="ai-provider-credentials gemini-key-field">
-                <label htmlFor="gemini-key">
-                  <span>
+              <div className="ai-provider-credentials">
+                <label
+                  className="flex items-center justify-between gap-2.5 text-[0.7rem] font-extrabold"
+                  htmlFor="gemini-key"
+                >
+                  <span className="inline-flex items-center gap-[5px] [&_svg]:size-3.5">
                     <KeyRound />
                     Gemini API Key
                   </span>
                   <a
+                    className="inline-flex items-center gap-[5px] whitespace-nowrap text-primary no-underline [&_svg]:size-3.5"
                     href="https://aistudio.google.com/app/api-keys"
                     target="_blank"
                     rel="noreferrer"
@@ -129,8 +142,9 @@ export function AiSettingsDialog({
                     <ExternalLink />
                   </a>
                 </label>
-                <div>
+                <div className="relative">
                   <input
+                    className="h-[42px] w-full rounded-[9px] border border-border bg-card py-0 pr-[42px] pl-[11px] text-[0.74rem] text-foreground outline-none focus-visible:border-primary focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--primary),transparent_82%)]"
                     id="gemini-key"
                     type={keyVisible ? "text" : "password"}
                     value={geminiKey}
@@ -140,6 +154,7 @@ export function AiSettingsDialog({
                     onChange={event => onGeminiKeyChange(event.target.value)}
                   />
                   <Button
+                    className="absolute top-1 right-1 min-h-[34px] min-w-[34px]"
                     type="button"
                     variant="ghost"
                     size="icon-sm"
@@ -152,8 +167,9 @@ export function AiSettingsDialog({
                 <small>密钥只在当前页面使用，不会保存到作品或浏览器。</small>
               </div>
             )}
-        <footer>
+        <footer className="flex justify-end">
           <Button
+            className="min-w-[108px]!"
             type="button"
             disabled={!ready}
             onClick={onClose}

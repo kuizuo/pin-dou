@@ -44,9 +44,13 @@ export function Turnstile({
     return () => window.turnstile?.remove(widgetId);
   }, [ready, refreshKey, sitekey]);
   if (!sitekey)
-    return <p className="turnstile-note">Cloudflare AI 尚未配置。</p>;
+    return (
+      <p className="m-0 text-[0.68rem] text-destructive">
+        Cloudflare AI 尚未配置。
+      </p>
+    );
   return (
-    <div className="turnstile-box">
+    <div className="max-w-[300px] overflow-hidden">
       <Script
         src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         strategy="afterInteractive"
