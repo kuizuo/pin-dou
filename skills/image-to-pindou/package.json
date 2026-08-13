@@ -1,0 +1,11 @@
+{
+  "name": "image-to-pindou",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/self-test.mjs"
+  },
+  "dependencies": {
+    "sharp": "^0.35.2"
+  }
+}

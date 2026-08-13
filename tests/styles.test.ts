@@ -26,6 +26,14 @@ const home = readFileSync(
   new URL("../components/workspace/home.tsx", import.meta.url),
   "utf8",
 );
+const skillPage = readFileSync(
+  new URL("../app/skill/page.tsx", import.meta.url),
+  "utf8",
+);
+const copyButton = readFileSync(
+  new URL("../app/skill/copy-button.tsx", import.meta.url),
+  "utf8",
+);
 const patternPreview = readFileSync(
   new URL("../components/pattern-preview-dialog.tsx", import.meta.url),
   "utf8",
@@ -45,6 +53,25 @@ const layout = readFileSync(
 const ai = readFileSync(new URL("../lib/ai.ts", import.meta.url), "utf8");
 
 describe("统一图纸工作台", () => {
+  it("顶部可以进入包含安装、使用和真实效果的 Skill 指南", () => {
+    expect(header).toContain("href=\"/skill\"");
+    expect(header.indexOf("href=\"/skill\"")).toBeLessThan(
+      header.indexOf("使用帮助"),
+    );
+    expect(skillPage).toContain("id=\"install\"");
+    expect(skillPage).toContain("id=\"demo\"");
+    expect(skillPage).toContain("npx skills add kuizuo/pin-dou");
+    expect(skillPage).toContain("/skill/mcd-lulu-pattern.png");
+    expect(skillPage.match(/<CopyButton/g)).toHaveLength(2);
+    expect(skillPage).toContain("href=\"/new\"");
+    expect(copyButton).toContain("navigator.clipboard.writeText(value)");
+    expect(copyButton).toContain("已复制");
+    expect(copyButton).toContain("setState(\"idle\"), 2000");
+    expect(header).toContain("listProjects()");
+    expect(header).toContain("router.push(projectPath(id))");
+    expect(header).toContain("router.push(\"/new\")");
+  });
+
   it("作品列表支持多选后统一确认删除", () => {
     expect(home).toContain("批量删除");
     expect(home).toContain("aria-pressed={selectionMode");
