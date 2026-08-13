@@ -353,6 +353,14 @@ describe("统一图纸工作台", () => {
     expect(prepare).toContain("确认替换");
   });
 
+  it("编辑工具悬停格子时显示坐标、色号和颜色块", () => {
+    const canvas = readFileSync("components/pattern-canvas.tsx", "utf8");
+    expect(result).toContain("showCellTooltip={isEditing");
+    expect(canvas).toContain("className=\"pattern-cell-tooltip\"");
+    expect(canvas).toContain("hoverColor?.id || \"空白\"");
+    expect(css).toContain(".pattern-cell-tooltip > i");
+  });
+
   it("离开前保护未应用调整，并保持浅色顶栏", () => {
     expect(workspace).toContain("还有未应用的调整");
     expect(workspace).toContain("放弃并离开");

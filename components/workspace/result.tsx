@@ -964,6 +964,7 @@ export function Result({
                 editable={isEditing && !spacePanning && !busy}
                 continuous={["brush", "eraser"].includes(tool)}
                 highlightIndex={replaceSource?.index}
+                showCellTooltip={isEditing && !spacePanning && !busy}
                 onStrokeStart={beginStroke}
                 onPaint={editCell}
                 onStrokeEnd={() => void endStroke()}

@@ -204,6 +204,7 @@ svg {
   height: max-content !important;
 }
 .workbench-board {
+  position: relative;
   width: min(78vmin, 920px);
   border: 1px solid #d8cfd2;
   background: #fffdfb;
@@ -220,6 +221,43 @@ svg {
 .pattern-canvas.is-editable {
   cursor: crosshair;
   touch-action: none;
+}
+.pattern-cell-tooltip {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid #d4dbe5;
+  border-radius: 8px;
+  background: #fff;
+  color: #182235;
+  box-shadow: 0 3px 10px rgb(24 34 53 / 0.18);
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.pattern-cell-tooltip[data-side="right"] {
+  transform: translate(10px, -50%);
+}
+.pattern-cell-tooltip[data-side="left"] {
+  transform: translate(calc(-100% - 10px), -50%);
+}
+.pattern-cell-tooltip > i {
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgb(24 34 53 / 0.18);
+  border-radius: 4px;
+  background-color: #fff;
+  background-image: linear-gradient(45deg, #e5e7eb 25%, transparent 25%, transparent 75%, #e5e7eb 75%), linear-gradient(45deg, #e5e7eb 25%, transparent 25%, transparent 75%, #e5e7eb 75%);
+  background-position: 0 0, 4px 4px;
+  background-size: 8px 8px;
+}
+.pattern-cell-tooltip > strong {
+  font-weight: 800;
 }
 .workbench-status,
 .workbench-toolbar,

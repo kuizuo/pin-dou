@@ -18,6 +18,7 @@ type Props = {
   onStrokeCancel?: () => void;
   continuous?: boolean;
   highlightIndex?: number | null;
+  showCellTooltip?: boolean;
 };
 
 export function PatternCanvas({
@@ -33,13 +34,15 @@ export function PatternCanvas({
   onStrokeCancel,
   continuous = false,
   highlightIndex = null,
+  showCellTooltip = false,
 }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
   const activePointers = useRef(new Set<number>());
   const drawingPointer = useRef<number | null>(null);
   const lastPainted = useRef<number | null>(null);
   const strokeOpen = useRef(false);
-  const [keyboardIndex, setKeyboardIndex] = useState<number | null>(null);
+  const [keyboardIndex, setKeyboardIndex] = useState<number | null>(null),
+    [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const canvas = ref.current;
@@ -120,9 +123,8 @@ export function PatternCanvas({
     }
   }, [pattern, showCodes, showGrid, shape, highlightIndex, keyboardIndex]);
 
-  function paint(event: React.PointerEvent<HTMLCanvasElement>) {
-    if (!editable || !onPaint || !ref.current) return;
-
+  function cellIndex(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (!ref.current) return null;
     const rect = ref.current.getBoundingClientRect();
     const x = Math.floor(
       ((event.clientX - rect.left) / rect.width) * pattern.width,
@@ -130,15 +132,16 @@ export function PatternCanvas({
     const y = Math.floor(
       ((event.clientY - rect.top) / rect.height) * pattern.height,
     );
-    const index = y * pattern.width + x;
+    return x >= 0 && y >= 0 && x < pattern.width && y < pattern.height
+      ? y * pattern.width + x
+      : null;
+  }
 
-    if (
-      x >= 0
-      && y >= 0
-      && x < pattern.width
-      && y < pattern.height
-      && lastPainted.current !== index
-    ) {
+  function paint(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (!editable || !onPaint) return;
+    const index = cellIndex(event);
+
+    if (index !== null && lastPainted.current !== index) {
       lastPainted.current = index;
       onPaint(index);
     }
@@ -188,46 +191,75 @@ export function PatternCanvas({
 
   const accessibilityHint = editable ? "。方向键移动，回车修改当前格" : "";
   const ariaLabel = `${pattern.name}，${pattern.width} × ${pattern.height} MARD 拼豆图纸${accessibilityHint}`;
+  const hoverColor
+    = hoverIndex === null || !pattern.cells[hoverIndex]
+      ? null
+      : beadById(pattern.cells[hoverIndex]);
 
   return (
-    <canvas
-      ref={ref}
-      aria-label={ariaLabel}
-      className={`pattern-canvas ${editable ? "is-editable" : ""} ${className}`}
-      onBlur={() => setKeyboardIndex(null)}
-      onFocus={() => editable && setKeyboardIndex(value => value ?? 0)}
-      onKeyDown={moveKeyboardCursor}
-      onPointerDown={(event) => {
-        if (!editable || !onPaint) return;
-        activePointers.current.add(event.pointerId);
-        if (event.pointerType === "touch" && activePointers.current.size > 1) {
-          if (strokeOpen.current && drawingPointer.current !== null)
-            finishStroke(drawingPointer.current, true);
-          return;
-        }
-        if (event.pointerType !== "touch")
-          event.currentTarget.setPointerCapture(event.pointerId);
-        drawingPointer.current = event.pointerId;
-        lastPainted.current = null;
-        strokeOpen.current = true;
-        onStrokeStart?.();
-        paint(event);
-      }}
-      onPointerMove={(event) => {
-        if (
-          continuous
-          && drawingPointer.current === event.pointerId
-          && activePointers.current.size === 1
-          && event.buttons === 1
-        )
+    <>
+      <canvas
+        ref={ref}
+        aria-label={ariaLabel}
+        className={`pattern-canvas ${editable ? "is-editable" : ""} ${className}`}
+        onBlur={() => setKeyboardIndex(null)}
+        onFocus={() => editable && setKeyboardIndex(value => value ?? 0)}
+        onKeyDown={moveKeyboardCursor}
+        onPointerDown={(event) => {
+          if (!editable || !onPaint) return;
+          activePointers.current.add(event.pointerId);
+          if (event.pointerType === "touch" && activePointers.current.size > 1) {
+            if (strokeOpen.current && drawingPointer.current !== null)
+              finishStroke(drawingPointer.current, true);
+            return;
+          }
+          if (event.pointerType !== "touch")
+            event.currentTarget.setPointerCapture(event.pointerId);
+          drawingPointer.current = event.pointerId;
+          lastPainted.current = null;
+          strokeOpen.current = true;
+          onStrokeStart?.();
           paint(event);
-      }}
-      onPointerUp={event => finishStroke(event.pointerId)}
-      onPointerCancel={event => finishStroke(event.pointerId, true)}
-      onLostPointerCapture={event => finishStroke(event.pointerId)}
-      role="img"
-      style={{ width: "100%" }}
-      tabIndex={editable ? 0 : -1}
-    />
+        }}
+        onPointerMove={(event) => {
+          if (showCellTooltip && event.pointerType !== "touch")
+            setHoverIndex(cellIndex(event));
+          if (
+            continuous
+            && drawingPointer.current === event.pointerId
+            && activePointers.current.size === 1
+            && event.buttons === 1
+          )
+            paint(event);
+        }}
+        onPointerLeave={() => setHoverIndex(null)}
+        onPointerUp={event => finishStroke(event.pointerId)}
+        onPointerCancel={event => finishStroke(event.pointerId, true)}
+        onLostPointerCapture={event => finishStroke(event.pointerId)}
+        role="img"
+        style={{ width: "100%" }}
+        tabIndex={editable ? 0 : -1}
+      />
+      {showCellTooltip && hoverIndex !== null && (
+        <span
+          className="pattern-cell-tooltip"
+          data-side={hoverIndex % pattern.width < pattern.width / 2 ? "right" : "left"}
+          style={{
+            left: `${((hoverIndex % pattern.width + 0.5) / pattern.width) * 100}%`,
+            top: `${((Math.floor(hoverIndex / pattern.width) + 0.5) / pattern.height) * 100}%`,
+          }}
+        >
+          <i style={{ background: hoverColor?.hex }} />
+          <strong>{hoverColor?.id || "空白"}</strong>
+          <span>
+            (
+            {hoverIndex % pattern.width + 1}
+            ,
+            {Math.floor(hoverIndex / pattern.width) + 1}
+            )
+          </span>
+        </span>
+      )}
+    </>
   );
 }
