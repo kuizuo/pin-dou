@@ -67,7 +67,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { BEAD_COLORS, patternStats } from "@/lib/beads";
-import { replaceAllColor, replaceConnectedRegion, setCell } from "@/lib/editor";
+import {
+  applyCellEdits,
+  findCellEdits,
+  replaceAllColor,
+  replaceConnectedRegion,
+  setCell,
+} from "@/lib/editor";
 import {
   copyPatternPng,
   downloadPatternPng,
@@ -81,6 +87,7 @@ import {
   addPeriodicVersion,
   addVersion,
   restoreVersion,
+  samePatternContent,
   saveProject,
 } from "@/lib/projects";
 import { DEFAULT_TRANSFORM } from "@/lib/types";
@@ -94,6 +101,13 @@ type WorkbenchTool
     | "replace";
 type PanelTab = "adjust" | "colors" | "versions";
 type NoticeTone = "success" | "warning";
+type HistoryEntry = Pick<
+  Project,
+  "backgroundRemoved" | "pattern" | "processedSource" | "settings"
+> & { hasManualEdits: boolean };
+
+const MANUAL_EDIT_SIZE_NOTICE
+  = "已有手工编辑，不能修改格数；如需改格数，请先恢复到自动生成的图纸。";
 
 const EDIT_TOOLS = [
   { id: "brush", label: "画笔", shortcut: "3", icon: Brush },
@@ -174,6 +188,44 @@ function OverflowTooltip({ text }: { text: string }) {
       <TooltipContent side="top">{text}</TooltipContent>
     </Tooltip>
   );
+}
+
+async function generatedProjectPattern(
+  project: Project,
+  onProgress: (message: string) => void = () => {},
+) {
+  const originalUrl = await readBlobAsDataUrl(
+    project.generatedSource ?? project.source,
+  );
+  const transform = project.generatedSource
+    ? DEFAULT_TRANSFORM
+    : project.transform;
+  let processedSource = project.processedSource,
+    sourceUrl = originalUrl;
+  if (project.settings.background !== "keep") {
+    if (processedSource && project.backgroundRemoved)
+      sourceUrl = await readBlobAsDataUrl(processedSource);
+    else {
+      sourceUrl = await removeBackground(
+        originalUrl,
+        project.settings.background,
+        onProgress,
+      );
+      processedSource = await fetch(sourceUrl).then(response => response.blob());
+    }
+  }
+  return {
+    originalUrl,
+    pattern: await imageToPattern(
+      sourceUrl,
+      project.sourceName,
+      project.settings,
+      transform,
+      project.settings.background === "keep" ? undefined : originalUrl,
+    ),
+    processedSource,
+    transform,
+  };
 }
 
 function PatternComparisonDialog({
@@ -311,6 +363,7 @@ export function Result({
   onPendingChange: (pending: boolean) => void;
 }) {
   const [pattern, setPattern] = useState(project.pattern);
+  const [hasManualEdits, setHasManualEdits] = useState(false);
   const [tool, setTool] = useState<WorkbenchTool>("locked");
   const [selected, setSelected] = useState(
     patternStats(project.pattern)[0]?.color.id || "H7",
@@ -320,8 +373,8 @@ export function Result({
       .slice(0, 6)
       .map(({ color }) => color.id),
   );
-  const [history, setHistory] = useState<Pattern[]>([]),
-    [future, setFuture] = useState<Pattern[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]),
+    [future, setFuture] = useState<HistoryEntry[]>([]);
   const [replaceSource, setReplaceSource] = useState<{
     id: string;
     index: number;
@@ -406,6 +459,20 @@ export function Result({
     [],
   );
   useEffect(() => {
+    let cancelled = false;
+    void generatedProjectPattern(projectRef.current)
+      .then(({ pattern: generated }) => {
+        if (!cancelled)
+          setHasManualEdits(
+            findCellEdits(patternRef.current.cells, generated.cells).length > 0,
+          );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [project.id]);
+  useEffect(() => {
     if (!settingsPending) return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
@@ -458,6 +525,31 @@ export function Result({
     setPattern(next);
   }
 
+  function historyEntry(
+    value: Project,
+    valuePattern = value.pattern,
+    valueHasManualEdits = hasManualEdits,
+  ) {
+    return {
+      backgroundRemoved: value.backgroundRemoved,
+      hasManualEdits: valueHasManualEdits,
+      pattern: valuePattern,
+      processedSource: value.processedSource,
+      settings: value.settings,
+    } satisfies HistoryEntry;
+  }
+
+  function syncHistoryEntry(entry: HistoryEntry) {
+    updatePattern(entry.pattern);
+    setHasManualEdits(entry.hasManualEdits);
+    const settings = {
+      ...entry.settings,
+      excludedColorIds: [...entry.settings.excludedColorIds],
+    };
+    draftSettingsRef.current = settings;
+    setDraftSettings(settings);
+  }
+
   function editCell(index: number) {
     if (!isEditing || busy) return;
     const current = patternRef.current;
@@ -508,8 +600,12 @@ export function Result({
       await saveProject(next);
       projectRef.current = next;
       onChange(next);
-      setHistory(items => [...items.slice(-29), before]);
+      setHistory(items => [
+        ...items.slice(-29),
+        historyEntry(projectRef.current, before),
+      ]);
       setFuture([]);
+      setHasManualEdits(true);
       setNotice(`已保存这一笔 · ${changed} 格`);
     }
     catch (error) {
@@ -549,8 +645,12 @@ export function Result({
       projectRef.current = next;
       updatePattern(nextPattern);
       onChange(next);
-      setHistory([]);
+      setHistory(items => [
+        ...items.slice(-29),
+        historyEntry(projectRef.current, before),
+      ]);
       setFuture([]);
+      setHasManualEdits(true);
       setSelected(target);
       setNotice(`已替换 ${result.changed} 格`);
     }
@@ -577,18 +677,18 @@ export function Result({
 
   async function undo() {
     const previous = history.at(-1),
-      current = patternRef.current;
+      current = historyEntry(projectRef.current, patternRef.current);
     if (!previous || busy) return;
     setSaving(true);
     const next = {
-      ...addPeriodicVersion(projectRef.current, previous),
-      pattern: previous,
+      ...addPeriodicVersion(projectRef.current, previous.pattern),
+      ...previous,
       updatedAt: new Date().toISOString(),
     };
     try {
       await saveProject(next);
       projectRef.current = next;
-      updatePattern(previous);
+      syncHistoryEntry(previous);
       onChange(next);
       setHistory(items => items.slice(0, -1));
       setFuture(items => [...items.slice(-29), current]);
@@ -605,19 +705,19 @@ export function Result({
   }
 
   async function redo() {
-    const nextPattern = future.at(-1),
-      current = patternRef.current;
-    if (!nextPattern || busy) return;
+    const nextEntry = future.at(-1),
+      current = historyEntry(projectRef.current, patternRef.current);
+    if (!nextEntry || busy) return;
     setSaving(true);
     const next = {
-      ...addPeriodicVersion(projectRef.current, nextPattern),
-      pattern: nextPattern,
+      ...addPeriodicVersion(projectRef.current, nextEntry.pattern),
+      ...nextEntry,
       updatedAt: new Date().toISOString(),
     };
     try {
       await saveProject(next);
       projectRef.current = next;
-      updatePattern(nextPattern);
+      syncHistoryEntry(nextEntry);
       onChange(next);
       setHistory(items => [...items.slice(-29), current]);
       setFuture(items => items.slice(0, -1));
@@ -633,10 +733,11 @@ export function Result({
     }
   }
 
-  async function applyAdjustments(settings: GenerationSettings) {
+  async function applyAdjustments(requestedSettings: GenerationSettings) {
     if (adjustingRef.current || saving) return;
     if (
-      JSON.stringify(settings) === JSON.stringify(projectRef.current.settings)
+      JSON.stringify(requestedSettings)
+      === JSON.stringify(projectRef.current.settings)
     )
       return;
     adjustingRef.current = true;
@@ -645,15 +746,29 @@ export function Result({
     const current = projectRef.current;
     let applied = false;
     try {
-      const originalUrl = await readBlobAsDataUrl(
-        current.generatedSource ?? current.source,
+      const {
+        originalUrl,
+        pattern: generatedCurrent,
+        processedSource: savedProcessedSource,
+        transform,
+      } = await generatedProjectPattern(current, setNotice);
+      let processedSource = savedProcessedSource;
+      const edits = findCellEdits(
+        patternRef.current.cells,
+        generatedCurrent.cells,
       );
-      const transform = current.generatedSource
-        ? DEFAULT_TRANSFORM
-        : current.transform;
+      const longestEdgeBlocked
+        = edits.length > 0
+          && requestedSettings.longestEdge !== current.settings.longestEdge;
+      const settings = longestEdgeBlocked
+        ? { ...requestedSettings, longestEdge: current.settings.longestEdge }
+        : requestedSettings;
+      if (longestEdgeBlocked) {
+        draftSettingsRef.current = settings;
+        setDraftSettings(settings);
+      }
       const backgroundRemoved = settings.background !== "keep";
-      let sourceUrl = originalUrl,
-        processedSource = current.processedSource;
+      let sourceUrl = originalUrl;
       if (backgroundRemoved) {
         if (
           processedSource
@@ -672,13 +787,24 @@ export function Result({
           );
         }
       }
-      const nextPattern = await imageToPattern(
+      const generatedPattern = await imageToPattern(
         sourceUrl,
         current.sourceName,
         settings,
         transform,
         backgroundRemoved ? originalUrl : undefined,
       );
+      const nextPattern = edits.length
+        ? {
+            ...generatedPattern,
+            cells: applyCellEdits(
+              generatedPattern.cells,
+              edits,
+              generatedPattern.width,
+              current.settings.mirror !== settings.mirror,
+            ),
+          }
+        : generatedPattern;
       const next = {
         ...addPeriodicVersion(current, nextPattern),
         name: nextPattern.name,
@@ -692,11 +818,20 @@ export function Result({
       projectRef.current = next;
       updatePattern(nextPattern);
       onChange(next);
-      setHistory([]);
+      setHistory(items => [
+        ...items.slice(-29),
+        historyEntry(current),
+      ]);
       setFuture([]);
+      setHasManualEdits(edits.length > 0);
       setReplaceSource(null);
       setTool("locked");
-      setNotice("调整已保存");
+      setNotice(
+        longestEdgeBlocked
+          ? MANUAL_EDIT_SIZE_NOTICE
+          : "调整已保存",
+        longestEdgeBlocked ? "warning" : "success",
+      );
       applied = true;
     }
     catch (error) {
@@ -791,6 +926,10 @@ export function Result({
 
   async function restore(version: ProjectVersion) {
     if (busy) return;
+    if (samePatternContent(patternRef.current, version.pattern)) {
+      setNotice(`当前已经是“${version.name}”`);
+      return;
+    }
     setSaving(true);
     setNotice(`正在恢复“${version.name}”…`);
     const next = restoreVersion(
@@ -1350,27 +1489,44 @@ export function Result({
                       />
                     </div>
                   </div>
-                  <label className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!">
-                    <span>
-                      格数
-                      <output>
-                        {draftSettings.longestEdge}
-                        {" "}
-                        格
-                      </output>
-                    </span>
-                    <input
-                      type="range"
-                      min="16"
-                      max="104"
-                      value={draftSettings.longestEdge}
-                      onChange={event =>
-                        scheduleAdjustments({
-                          ...draftSettingsRef.current,
-                          longestEdge: Number(event.target.value),
-                        })}
+                  <Tooltip disabled={!hasManualEdits}>
+                    <TooltipTrigger
+                      delay={0}
+                      render={(
+                        <label
+                          className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!"
+                          tabIndex={hasManualEdits ? 0 : undefined}
+                        >
+                          <span>
+                            格数
+                            <output>
+                              {draftSettings.longestEdge}
+                              {" "}
+                              格
+                            </output>
+                          </span>
+                          <input
+                            type="range"
+                            min="16"
+                            max="104"
+                            disabled={hasManualEdits}
+                            value={draftSettings.longestEdge}
+                            onChange={event =>
+                              scheduleAdjustments({
+                                ...draftSettingsRef.current,
+                                longestEdge: Number(event.target.value),
+                              })}
+                          />
+                        </label>
+                      )}
                     />
-                  </label>
+                    <TooltipContent
+                      className="pointer-events-none"
+                      side="top"
+                    >
+                      {MANUAL_EDIT_SIZE_NOTICE}
+                    </TooltipContent>
+                  </Tooltip>
                   <label className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!">
                     <span>
                       颜色上限
@@ -1419,14 +1575,14 @@ export function Result({
                       {(
                         [
                           {
-                            id: "average",
-                            title: "自然平均",
-                            description: "保留渐变与光影",
-                          },
-                          {
                             id: "edge",
                             title: "轮廓增强",
                             description: "平滑杂色，突出轮廓",
+                          },
+                          {
+                            id: "average",
+                            title: "自然平均",
+                            description: "保留渐变与光影",
                           },
                           {
                             id: "dominant",
@@ -1592,29 +1748,35 @@ export function Result({
                     </div>
                   </div>
                   <div className="panel-version-list min-[980px]:[&_button]:h-[34px]! min-[980px]:[&_button]:min-h-[34px]! max-[641px]:[&_article]:px-[9px]! max-[641px]:[&_article]:py-2! max-[641px]:[&_article>span]:px-1.5! max-[641px]:[&_article>span]:py-[3px]! max-[641px]:[&_article>span]:text-[0.66rem]! max-[641px]:[&_strong]:text-[0.82rem]! max-[641px]:[&_strong]:leading-[1.25]! max-[641px]:[&_small]:mt-px! max-[641px]:[&_small]:text-[0.7rem]! max-[641px]:[&_small]:leading-[1.2]! max-[641px]:[&_button]:h-9! max-[641px]:[&_button]:min-h-9! max-[641px]:[&_button]:px-2.5! max-[641px]:[&_button]:text-[0.72rem]! max-[641px]:[&_button]:font-[650]!">
-                    {[...project.versions].reverse().map(version => (
-                      <article key={version.id}>
-                        <span className={version.kind}>
-                          {version.kind === "manual" ? "手动" : "自动"}
-                        </span>
-                        <div>
-                          <strong>{version.name}</strong>
-                          <small>
-                            {new Date(version.createdAt).toLocaleString(
-                              "zh-CN",
-                            )}
-                          </small>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={busy}
-                          onClick={() => void restore(version)}
-                        >
-                          恢复
-                        </Button>
-                      </article>
-                    ))}
+                    {[...project.versions].reverse().map((version) => {
+                      const current = samePatternContent(
+                        pattern,
+                        version.pattern,
+                      );
+                      return (
+                        <article key={version.id}>
+                          <span className={version.kind}>
+                            {version.kind === "manual" ? "手动" : "自动"}
+                          </span>
+                          <div>
+                            <strong>{version.name}</strong>
+                            <small>
+                              {new Date(version.createdAt).toLocaleString(
+                                "zh-CN",
+                              )}
+                            </small>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busy || current}
+                            onClick={() => void restore(version)}
+                          >
+                            {current ? "当前" : "恢复"}
+                          </Button>
+                        </article>
+                      );
+                    })}
                     {!project.versions.length && (
                       <p className="panel-empty">
                         还没有版本。关键操作和定时备份会出现在这里。

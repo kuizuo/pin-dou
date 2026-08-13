@@ -90,7 +90,7 @@ describe("MARD 图纸核心处理", () => {
     expect(DEFAULT_SETTINGS.longestEdge).toBe(65);
     expect(DEFAULT_SETTINGS.maxColors).toBe(12);
     expect(DEFAULT_SETTINGS.colorMerge).toBe(5);
-    expect(DEFAULT_SETTINGS.processingMode).toBe("average");
+    expect(DEFAULT_SETTINGS.processingMode).toBe("edge");
     expect(DEFAULT_SETTINGS.mode).toBe("local");
     expect(DEFAULT_SETTINGS.mirror).toBe(false);
     for (const size of PALETTE_SIZES)

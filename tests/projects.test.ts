@@ -69,12 +69,36 @@ describe("作品版本", () => {
       "手动保存",
       "保留",
     );
-    const restored = restoreVersion(initial, initial.versions[0]);
+    const changed = {
+      ...initial,
+      pattern: {
+        ...initial.pattern,
+        cells: initial.pattern.cells.with(0, "A1"),
+      },
+    };
+    const restored = restoreVersion(changed, initial.versions[0]);
     expect(restored.versions).toHaveLength(2);
     expect(restored.pattern.id).not.toBe(initial.versions[0].pattern.id);
     expect(restored.versions[0].name).toBe("保留");
     expect(restored.versions[1].name).toBe("恢复前备份");
-    expect(restored.versions[1].pattern.id).toBe(initial.pattern.id);
+    expect(restored.versions[1].pattern.id).toBe(changed.pattern.id);
+  });
+
+  it("当前已经是目标版本时不再重复创建恢复前备份", () => {
+    const initial = addVersion(
+      project(),
+      { ...createSamplePattern(), cells: ["A1"] },
+      "manual",
+      "手动保存",
+      "保留",
+    );
+    const changed = {
+      ...initial,
+      pattern: { ...initial.pattern, cells: ["A2"] },
+    };
+    const restored = restoreVersion(changed, initial.versions[0]);
+    expect(restoreVersion(restored, initial.versions[0])).toBe(restored);
+    expect(restored.versions).toHaveLength(2);
   });
 
   it("普通改动每五分钟最多自动备份一次，没有改动不备份", () => {

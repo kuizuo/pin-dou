@@ -10,6 +10,33 @@ export function setCell(
   return { cells: next, changed: 1 };
 }
 
+export function findCellEdits(
+  cells: Array<string | null>,
+  generatedCells: Array<string | null>,
+) {
+  if (cells.length !== generatedCells.length)
+    throw new Error("当前图纸尺寸与生成结果不一致，调整没有应用。");
+  return cells.flatMap((cell, index) =>
+    cell === generatedCells[index] ? [] : [[index, cell] as const],
+  );
+}
+
+export function applyCellEdits(
+  cells: Array<string | null>,
+  edits: ReadonlyArray<readonly [number, string | null]>,
+  width: number,
+  mirror: boolean,
+) {
+  const next = [...cells];
+  for (const [index, cell] of edits) {
+    const target = mirror
+      ? Math.floor(index / width) * width + width - 1 - (index % width)
+      : index;
+    if (target >= 0 && target < next.length) next[target] = cell;
+  }
+  return next;
+}
+
 export function replaceAllColor(
   cells: Array<string | null>,
   source: string,

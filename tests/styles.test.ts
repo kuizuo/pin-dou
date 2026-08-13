@@ -264,6 +264,9 @@ describe("统一图纸工作台", () => {
     expect(result).toContain("轮廓增强");
     expect(result).toContain("纯色块");
     expect(result).toContain("自然平均");
+    expect(result.indexOf("轮廓增强")).toBeLessThan(
+      result.indexOf("自然平均"),
+    );
     expect(normalizedCss).toContain(
       ".panel-processing-modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));",
     );

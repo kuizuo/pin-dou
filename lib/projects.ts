@@ -155,7 +155,7 @@ export function addVersion(
   };
 }
 
-function samePatternContent(left: Pattern, right: Pattern) {
+export function samePatternContent(left: Pattern, right: Pattern) {
   return left.width === right.width
     && left.height === right.height
     && JSON.stringify(left.contentBounds) === JSON.stringify(right.contentBounds)
@@ -180,6 +180,7 @@ export function addPeriodicVersion(project: Project, pattern: Pattern) {
 }
 
 export function restoreVersion(project: Project, version: ProjectVersion) {
+  if (samePatternContent(project.pattern, version.pattern)) return project;
   const backup = addVersion(
     project,
     project.pattern,

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyCellEdits,
+  findCellEdits,
   replaceAllColor,
   replaceConnectedRegion,
   setCell,
@@ -35,5 +37,28 @@ describe("像素编辑", () => {
     const result = replaceConnectedRegion(["A", "A", "B", "A"], 2, 0, null);
     expect(result.cells).toEqual([null, null, "B", null]);
     expect(result.changed).toBe(3);
+  });
+
+  it("重新生成图纸后保留画笔和擦除结果", () => {
+    const edits = findCellEdits(
+      ["A", "C", null, "B"],
+      ["A", "B", "A", "B"],
+    );
+    expect(applyCellEdits(["D", "D", "D", "D"], edits, 2, false)).toEqual([
+      "D",
+      "C",
+      null,
+      "D",
+    ]);
+  });
+
+  it("水平镜像后手工修改跟随到对称位置", () => {
+    const edits = findCellEdits(
+      ["C", "B", "A", "B", "A", null],
+      ["A", "B", "A", "B", "A", "B"],
+    );
+    expect(
+      applyCellEdits(["D", "D", "D", "D", "D", "D"], edits, 3, true),
+    ).toEqual(["D", "D", "C", null, "D", "D"]);
   });
 });

@@ -100,7 +100,7 @@ export const DEFAULT_SETTINGS: GenerationSettings = {
   maxColors: 12,
   paletteSize: 291,
   excludedColorIds: [],
-  processingMode: "average",
+  processingMode: "edge",
   colorMerge: 5,
   background: "plain",
   mirror: false,
