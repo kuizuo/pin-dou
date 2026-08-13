@@ -359,7 +359,7 @@ function VariantCard({
                 variant="outline"
                 onClick={onRetry}
               >
-                单独重试
+                重试
               </Button>
             )
           : null}

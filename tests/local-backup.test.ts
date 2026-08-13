@@ -7,7 +7,7 @@ import {
   supportsLocalBackup,
   writeBackupFile,
 } from "../lib/local-backup";
-import { createBackupBlob } from "../lib/projects";
+import { createBackupBlob, readBackupProjects } from "../lib/projects";
 import {
   DEFAULT_SETTINGS,
   DEFAULT_TRANSFORM,
@@ -35,11 +35,97 @@ function project(): Project {
 describe("本地文件夹备份", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("备份内容保持现有格式", async () => {
+  it("新版备份保留一份原图，并对相同图纸去重", async () => {
+    const valueProject = project();
+    valueProject.versions = [{
+      id: "version-1",
+      name: "相同版本",
+      kind: "manual",
+      reason: "手动保存",
+      createdAt: valueProject.pattern.createdAt,
+      pattern: structuredClone(valueProject.pattern),
+    }];
     const value = JSON.parse(await (await createBackupBlob([project()])).text());
-    expect(value.schemaVersion).toBe(2);
+    const deduplicated = JSON.parse(
+      await (await createBackupBlob([valueProject])).text(),
+    );
+    expect(value.schemaVersion).toBe(3);
     expect(value.projects[0].name).toBe("备份测试");
-    expect(value.projects[0].source).toMatch(/^data:image\/png;base64,/);
+    expect(value.sources).toHaveLength(1);
+    expect(value.projects[0].source).toBe(0);
+    expect(value.projects[0].generatedSource).toBeUndefined();
+    expect(value.projects[0].processedSource).toBeUndefined();
+    expect(JSON.stringify(value.projects)).not.toContain("sourcePreview");
+    expect(deduplicated.projects[0].snapshots).toHaveLength(1);
+  });
+
+  it("只保留最近十个版本并完整还原图纸", async () => {
+    const value = project();
+    value.versions = Array.from({ length: 12 }, (_, index) => ({
+      id: `version-${index}`,
+      name: `版本 ${index}`,
+      kind: "auto" as const,
+      reason: "自动备份" as const,
+      createdAt: `2026-08-13T08:${String(index).padStart(2, "0")}:00.000Z`,
+      pattern: {
+        ...structuredClone(value.pattern),
+        cells: value.pattern.cells.with(
+          index % value.pattern.cells.length,
+          index % 2 ? "A1" : null,
+        ),
+      },
+    }));
+    const backup = await createBackupBlob([value]),
+      [restored] = await readBackupProjects(
+        new File([backup], "backup.pindou.json"),
+      );
+    expect(await restored.source.text()).toBe("image");
+    expect(restored.pattern.cells).toEqual(value.pattern.cells);
+    expect(restored.versions).toHaveLength(10);
+    expect(restored.versions[0].name).toBe("版本 2");
+    expect(restored.versions.at(-1)?.pattern.cells).toEqual(
+      value.versions.at(-1)?.pattern.cells,
+    );
+  });
+
+  it("大图作品的精简备份至少缩小八成", async () => {
+    const value = project();
+    value.source = new Blob([new Uint8Array(1024 * 1024)], {
+      type: "image/png",
+    });
+    const projects = Array.from({ length: 6 }, (_, index) => ({
+        ...value,
+        id: `copy-${index}`,
+      })),
+      backup = await createBackupBlob(projects),
+      uncompressedSources = value.source.size * 4 / 3 * projects.length;
+    expect(backup.size).toBeLessThan(uncompressedSources * 0.2);
+    expect(JSON.parse(await backup.text()).sources).toHaveLength(1);
+  });
+
+  it("继续读取旧版完整备份", async () => {
+    const value = project(),
+      legacy = {
+        schemaVersion: 2,
+        exportedAt: "2026-08-13T09:00:00.000Z",
+        projects: [{
+          ...value,
+          source: "data:image/png;base64,aW1hZ2U=",
+        }],
+      },
+      [restored] = await readBackupProjects(
+        new File([JSON.stringify(legacy)], "legacy.pindou.json"),
+      );
+    expect(restored.name).toBe(value.name);
+    expect(restored.source.size).toBe(5);
+  });
+
+  it("拒绝损坏的紧凑格子且不返回部分作品", async () => {
+    const backup = JSON.parse(await (await createBackupBlob([project()])).text());
+    backup.projects[0].snapshots[0].c.d = "broken";
+    await expect(readBackupProjects(
+      new File([JSON.stringify(backup)], "broken.pindou.json"),
+    )).rejects.toThrow("备份内容不完整");
   });
 
   it("完整写入后才关闭文件", async () => {

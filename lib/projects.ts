@@ -158,7 +158,6 @@ export function addVersion(
 function samePatternContent(left: Pattern, right: Pattern) {
   return left.width === right.width
     && left.height === right.height
-    && left.sourcePreview === right.sourcePreview
     && JSON.stringify(left.contentBounds) === JSON.stringify(right.contentBounds)
     && left.cells.length === right.cells.length
     && left.cells.every((cell, index) => cell === right.cells[index])
@@ -261,7 +260,18 @@ const VersionSchema = z.object({
   ]),
   pattern: PatternSchema,
 });
-const BackupProjectSchema = z.object({
+const SettingsSchema = z.object({
+  longestEdge: z.number().min(16).max(104),
+  maxColors: z.number().min(1).max(60),
+  paletteSize: z.number().min(1).max(291),
+  excludedColorIds: z.array(z.string()),
+  processingMode: z.enum(["edge", "dominant", "average"]),
+  colorMerge: z.number().min(0).max(60),
+  background: z.enum(["plain", "fast", "precise", "keep"]),
+  mirror: z.boolean().optional(),
+  mode: z.enum(["local", "ai"]),
+});
+const LegacyBackupProjectSchema = z.object({
   id: z.string(),
   name: z.string(),
   createdAt: z.string(),
@@ -294,24 +304,192 @@ const BackupProjectSchema = z.object({
       })
       .optional(),
   }),
-  settings: z.object({
-    longestEdge: z.number().min(16).max(104),
-    maxColors: z.number().min(1).max(60),
-    paletteSize: z.number().min(1).max(291),
-    excludedColorIds: z.array(z.string()),
-    processingMode: z.enum(["edge", "dominant", "average"]),
-    colorMerge: z.number().min(0).max(60),
-    background: z.enum(["plain", "fast", "precise", "keep"]),
-    mode: z.enum(["local", "ai"]),
-  }),
+  settings: SettingsSchema,
   pattern: PatternSchema,
   versions: z.array(VersionSchema),
 });
-const BackupSchema = z.object({
+const LegacyBackupSchema = z.object({
   schemaVersion: z.literal(2),
   exportedAt: z.string(),
-  projects: z.array(BackupProjectSchema),
+  projects: z.array(LegacyBackupProjectSchema),
 });
+
+const PackedCellsSchema = z.object({
+  p: z.array(z.string()).max(291),
+  d: z.string().max(30000),
+  s: z.union([z.literal(1), z.literal(2)]),
+});
+const CompactSnapshotSchema = z.object({
+  w: z.number().int().min(1).max(104),
+  h: z.number().int().min(1).max(104),
+  c: PackedCellsSchema,
+  b: PackedCellsSchema.optional(),
+  o: z
+    .object({
+      x: z.number(),
+      y: z.number(),
+      width: z.number(),
+      height: z.number(),
+    })
+    .optional(),
+});
+const CompactPatternSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  createdAt: z.string(),
+  snapshot: z.number().int().nonnegative(),
+});
+const CompactVersionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: z.enum(["auto", "manual"]),
+  reason: VersionSchema.shape.reason,
+  createdAt: z.string(),
+  patternName: z.string(),
+  snapshot: z.number().int().nonnegative(),
+});
+const CompactBackupProjectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  sourceName: z.string(),
+  source: z.number().int().nonnegative(),
+  transform: LegacyBackupProjectSchema.shape.transform,
+  settings: SettingsSchema,
+  pattern: CompactPatternSchema,
+  snapshots: z.array(CompactSnapshotSchema).min(1).max(11),
+  versions: z.array(CompactVersionSchema).max(10),
+});
+const CompactBackupSchema = z.object({
+  schemaVersion: z.literal(3),
+  exportedAt: z.string(),
+  sources: z.array(z.string().startsWith("data:")),
+  projects: z.array(CompactBackupProjectSchema),
+});
+
+type PackedCells = z.infer<typeof PackedCellsSchema>;
+type CompactSnapshot = z.infer<typeof CompactSnapshotSchema>;
+
+function bytesToBase64(bytes: Uint8Array) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function base64ToBytes(value: string) {
+  if (value.length % 4 || !/^[\w+/]*={0,2}$/.test(value))
+    throw new Error("Invalid base64");
+  const binary = atob(value),
+    bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1)
+    bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+function packCells(cells: Pattern["cells"]): PackedCells {
+  const palette = [...new Set(cells.filter((cell): cell is string => !!cell))],
+    paletteIndexes = new Map(palette.map((id, index) => [id, index + 1])),
+    size = palette.length < 255 ? 1 : 2,
+    bytes = new Uint8Array(cells.length * size);
+  cells.forEach((cell, index) => {
+    const value = cell ? paletteIndexes.get(cell) : 0;
+    if (value === undefined) throw new Error("图纸颜色无法编码。");
+    if (size === 1) bytes[index] = value;
+    else {
+      bytes[index * 2] = value & 255;
+      bytes[index * 2 + 1] = value >> 8;
+    }
+  });
+  return { p: palette, d: bytesToBase64(bytes), s: size };
+}
+
+function unpackCells(packed: PackedCells, count: number) {
+  const bytes = base64ToBytes(packed.d);
+  if (bytes.length !== count * packed.s) throw new Error("Invalid cell count");
+  return Array.from({ length: count }, (_, index) => {
+    const value
+      = packed.s === 1
+        ? bytes[index]
+        : bytes[index * 2] | (bytes[index * 2 + 1] << 8);
+    if (value > packed.p.length) throw new Error("Invalid palette index");
+    return value ? packed.p[value - 1] : null;
+  });
+}
+
+function compactSnapshot(pattern: Pattern): CompactSnapshot {
+  return {
+    w: pattern.width,
+    h: pattern.height,
+    c: packCells(pattern.cells),
+    b: pattern.backgroundCells
+      ? packCells(pattern.backgroundCells)
+      : undefined,
+    o: pattern.contentBounds,
+  };
+}
+
+function expandSnapshot(
+  snapshot: CompactSnapshot,
+  metadata: { id: string; name: string; createdAt: string },
+): Pattern {
+  const count = snapshot.w * snapshot.h;
+  return {
+    ...metadata,
+    width: snapshot.w,
+    height: snapshot.h,
+    cells: unpackCells(snapshot.c, count),
+    backgroundCells: snapshot.b
+      ? unpackCells(snapshot.b, count)
+      : undefined,
+    contentBounds: snapshot.o,
+  };
+}
+
+function compactProject(project: Project, source: number) {
+  const snapshots: CompactSnapshot[] = [],
+    snapshotIndexes = new Map<string, number>();
+  const addSnapshot = (pattern: Pattern) => {
+    const snapshot = compactSnapshot(pattern),
+      key = JSON.stringify(snapshot),
+      existing = snapshotIndexes.get(key);
+    if (existing !== undefined) return existing;
+    const index = snapshots.length;
+    snapshots.push(snapshot);
+    snapshotIndexes.set(key, index);
+    return index;
+  };
+  const versions = [...project.versions]
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+    .slice(-10)
+    .map(version => ({
+      id: version.id,
+      name: version.name,
+      kind: version.kind,
+      reason: version.reason,
+      createdAt: version.createdAt,
+      patternName: version.pattern.name,
+      snapshot: addSnapshot(version.pattern),
+    }));
+  return {
+    id: project.id,
+    name: project.name,
+    createdAt: project.createdAt,
+    updatedAt: project.updatedAt,
+    sourceName: project.sourceName,
+    source,
+    transform: project.transform,
+    settings: project.settings,
+    pattern: {
+      id: project.pattern.id,
+      name: project.pattern.name,
+      createdAt: project.pattern.createdAt,
+      snapshot: addSnapshot(project.pattern),
+    },
+    snapshots,
+    versions,
+  };
+}
 
 function dataUrlToBlob(dataUrl: string) {
   const [header, payload] = dataUrl.split(","),
@@ -323,24 +501,26 @@ function dataUrlToBlob(dataUrl: string) {
 }
 
 export async function createBackupBlob(projects: Project[]) {
-  const portable = await Promise.all(
-    projects.map(async project => ({
-      ...project,
-      source: await readBlobAsDataUrl(project.source),
-      generatedSource: project.generatedSource
-        ? await readBlobAsDataUrl(project.generatedSource)
-        : undefined,
-      processedSource: project.processedSource
-        ? await readBlobAsDataUrl(project.processedSource)
-        : undefined,
-    })),
-  );
+  const sources: string[] = [],
+    sourceIndexes = new Map<string, number>(),
+    compactProjects = [];
+  for (const project of projects) {
+    const source = await readBlobAsDataUrl(project.source);
+    let sourceIndex = sourceIndexes.get(source);
+    if (sourceIndex === undefined) {
+      sourceIndex = sources.length;
+      sources.push(source);
+      sourceIndexes.set(source, sourceIndex);
+    }
+    compactProjects.push(compactProject(project, sourceIndex));
+  }
   return new Blob(
     [
       JSON.stringify({
-        schemaVersion: 2,
+        schemaVersion: 3,
         exportedAt: new Date().toISOString(),
-        projects: portable,
+        sources,
+        projects: compactProjects,
       }),
     ],
     { type: "application/json" },
@@ -354,7 +534,7 @@ export async function downloadBackup(projects: Project[]) {
   );
 }
 
-export async function importBackup(file: File) {
+export async function readBackupProjects(file: File) {
   let parsed: unknown;
   try {
     parsed = JSON.parse(await file.text());
@@ -362,11 +542,9 @@ export async function importBackup(file: File) {
   catch {
     throw new Error("备份文件无法读取，现有作品没有改变。");
   }
-  const result = BackupSchema.safeParse(parsed);
-  if (!result.success)
-    throw new Error("备份内容不完整或版本不支持，现有作品没有改变。");
-  const projects = result.data.projects.map((project) => {
-    const hydrated = {
+  const legacy = LegacyBackupSchema.safeParse(parsed);
+  if (legacy.success)
+    return legacy.data.projects.map(project => normalizeProject({
       ...project,
       source: dataUrlToBlob(project.source),
       generatedSource: project.generatedSource
@@ -375,9 +553,59 @@ export async function importBackup(file: File) {
       processedSource: project.processedSource
         ? dataUrlToBlob(project.processedSource)
         : undefined,
-    } as Project;
-    return normalizeProject(hydrated);
-  });
+    } as Project));
+  const compact = CompactBackupSchema.safeParse(parsed);
+  if (!compact.success)
+    throw new Error("备份内容不完整或版本不支持，现有作品没有改变。");
+  try {
+    return compact.data.projects.map((project) => {
+      const snapshot = (index: number) => {
+          const value = project.snapshots[index];
+          if (!value) throw new Error("Invalid snapshot reference");
+          return value;
+        },
+        source = compact.data.sources[project.source];
+      if (!source) throw new Error("Invalid source reference");
+      const sourceBlob = dataUrlToBlob(source);
+      return normalizeProject({
+        id: project.id,
+        name: project.name,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+        source: sourceBlob,
+        sourceName: project.sourceName,
+        sourceType: sourceBlob.type,
+        sourceVariant: "original",
+        transform: project.transform,
+        settings: {
+          ...DEFAULT_SETTINGS,
+          ...project.settings,
+          background: project.settings.background === "keep" ? "keep" : "plain",
+          mode: "local",
+        },
+        pattern: expandSnapshot(snapshot(project.pattern.snapshot), project.pattern),
+        versions: project.versions.map(version => ({
+          id: version.id,
+          name: version.name,
+          kind: version.kind,
+          reason: version.reason,
+          createdAt: version.createdAt,
+          pattern: expandSnapshot(snapshot(version.snapshot), {
+            id: version.id,
+            name: version.patternName,
+            createdAt: version.createdAt,
+          }),
+        })),
+      });
+    });
+  }
+  catch {
+    throw new Error("备份内容不完整或版本不支持，现有作品没有改变。");
+  }
+}
+
+export async function importBackup(file: File) {
+  const projects = await readBackupProjects(file);
   await saveProjects(projects);
   return projects.length;
 }
