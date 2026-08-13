@@ -1,8 +1,15 @@
 "use client";
 
-import { Check, ChevronsUpDown, CircleHelp, Images, Plus } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  CircleHelp,
+  Images,
+  Plus,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { Project } from "@/lib/types";
 import { PatternCanvas } from "@/components/pattern-canvas";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -31,6 +38,7 @@ export function AppHeader({
   onSelectProject,
   onNewProject,
 }: AppHeaderProps) {
+  const isHelpPage = usePathname() === "/help";
   const currentProject = projects.find(
     project => project.id === currentProjectId,
   );
@@ -75,14 +83,26 @@ export function AppHeader({
           )}
       <div className="flex items-center gap-4 max-[640px]:gap-2">
         <Link
-          href="/help"
+          href={isHelpPage ? "https://github.com/kuizuo/pin-dou" : "/help"}
+          target={isHelpPage ? "_blank" : undefined}
+          rel={isHelpPage ? "noreferrer" : undefined}
           className={cn(
             buttonVariants({ variant: "ghost", size: "sm" }),
             "text-muted-foreground max-[640px]:hidden",
           )}
         >
-          <CircleHelp size={15} />
-          使用帮助
+          {isHelpPage
+            ? (
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="size-[15px] fill-current"
+                >
+                  <path d="M12 .7a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.2.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.4 5.7.4.4.8 1.1.8 2.2v3.2c0 .4.2.7.8.6A11.5 11.5 0 0 0 12 .7Z" />
+                </svg>
+              )
+            : <CircleHelp size={15} />}
+          {isHelpPage ? "GitHub" : "使用帮助"}
         </Link>
         {onNewProject && (
           <DropdownMenu>

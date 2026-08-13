@@ -114,9 +114,6 @@ export default function HelpPage() {
                 图片会变成什么样？
               </h2>
             </div>
-            <span className="hidden text-sm text-muted-foreground sm:block">
-              下面是这个示例的真实生成结果
-            </span>
           </div>
 
           <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-[0_18px_50px_rgb(80_44_59/0.08)] sm:p-6">
