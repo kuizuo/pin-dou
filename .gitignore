@@ -13,6 +13,6 @@ coverage
 .playwright-cli/
 .playwright-mcp/
 output/
+outputs/
 
-next-env.d.ts
 tsconfig.tsbuildinfo
