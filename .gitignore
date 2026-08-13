@@ -14,4 +14,5 @@ coverage
 .playwright-mcp/
 output/
 
+next-env.d.ts
 tsconfig.tsbuildinfo

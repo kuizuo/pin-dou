@@ -1,7 +1,6 @@
 import type { Env, ExportedHandler } from "../worker-configuration";
 
 const MODEL = "@cf/black-forest-labs/flux-2-klein-4b";
-const GATEWAY = "pin-dou-free";
 const FREE_QUOTA_CODE = "AI_FREE_QUOTA_EXHAUSTED";
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -159,7 +158,6 @@ async function pixelize(request: Request, env: Env, origin: string) {
     const output = await env.AI.run(
       MODEL,
       { multipart: { body: encoded.body, contentType } },
-      { gateway: { id: GATEWAY } },
     );
     if (!output.image)
       return jsonError("AI 服务没有返回可用图片。", 502, origin);
