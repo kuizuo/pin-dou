@@ -39,6 +39,8 @@ export default defineConfig([
   },
   globalIgnores([
     ".next/**",
+    ".open-next/**",
+    ".wrangler/**",
     ".agents/**",
     "out/**",
     "coverage/**",
