@@ -5,6 +5,7 @@ import {
   FlipHorizontal,
   FlipVertical,
   ImageIcon,
+  ImagePlus,
   LoaderCircle,
   Maximize2,
   RefreshCw,
@@ -299,6 +300,7 @@ export function Prepare({
   draft,
   setDraft,
   onBack,
+  onFile,
   onGenerate,
   onModeChange,
   onRegenerate,
@@ -319,6 +321,7 @@ export function Prepare({
   draft: Draft;
   setDraft: (draft: Draft) => void;
   onBack: () => void;
+  onFile: (file?: File) => void;
   onGenerate: (request?: AiRequest) => void;
   onModeChange: (mode: GenerationSettings["mode"]) => void;
   onRegenerate: () => void;
@@ -344,6 +347,7 @@ export function Prepare({
     [previewSrc, setPreviewSrc] = useState(""),
     [turnstileToken, setTurnstileToken] = useState(""),
     [turnstileRefresh, setTurnstileRefresh] = useState(0);
+  const uploadInput = useRef<HTMLInputElement>(null);
   function chooseMode(mode: GenerationSettings["mode"]) {
     setDraft({ ...draft, settings: { ...settings, mode } });
     onModeChange(mode);
@@ -360,14 +364,32 @@ export function Prepare({
   }
   return (
     <main className="mx-auto w-[min(1320px,calc(100%-40px))] pt-7 pb-[120px] max-[640px]:w-[calc(100%-20px)] max-[640px]:pt-2.5 max-[640px]:pb-[104px]">
-      <header className="mb-3.5 flex min-h-[58px] items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+      <header className="mb-3.5 flex min-h-[58px] items-center justify-between gap-2 max-[640px]:items-start">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <input
+            ref={uploadInput}
+            type="file"
+            hidden
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+            onChange={(event) => {
+              onFile(event.target.files?.[0]);
+              event.target.value = "";
+            }}
+          />
           <Button
             variant="outline"
             onClick={onBack}
           >
             <ArrowLeft />
             返回
+          </Button>
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() => uploadInput.current?.click()}
+          >
+            <ImagePlus />
+            重新上传
           </Button>
           {!showVariants && onSwitchSample && sampleTotal > 1 && (
             <Button

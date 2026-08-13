@@ -256,7 +256,7 @@ svg {
 .workbench-status {
   top: 60px;
   left: 8px;
-  height: calc(var(--workbench-control-size) + 8px);
+  height: calc(var(--workbench-control-size) + 0px);
   max-width: calc(50% - 12px);
   padding: 0 10px;
   border-radius: 12px;

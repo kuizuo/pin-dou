@@ -480,6 +480,7 @@ export function Workspace({
           message={message}
           onAiProviderChange={setAiProvider}
           onBack={home}
+          onFile={file => void chooseFile(file)}
           onChooseCandidate={candidate => void chooseAiCandidate(candidate)}
           onGeminiKeyChange={setGeminiKey}
           onGenerate={request => void generate(request)}
