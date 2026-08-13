@@ -237,6 +237,20 @@ describe("统一图纸工作台", () => {
     expect(result).toContain("checked={draftSettings.mirror}");
     expect(result).toContain("aria-label=\"水平镜像图纸\"");
     expect(result).not.toContain("label: \"去除纯色背景\"");
+    expect(result).toContain("applied && JSON.stringify");
+    expect(result).toContain("\"warning\"");
+    expect(result).toContain("data-tone={busy ? \"busy\" : noticeTone}");
+    expect(result).toContain("element.scrollWidth > element.clientWidth");
+    expect(result).toContain("<OverflowTooltip text={notice} />");
+    expect(result).toContain("delay={0}");
+    expect(result).toContain("open={open}");
+    expect(result).toContain("max-[980px]:max-w-[calc(100%-16px)]!");
+    expect(normalizedCss).toContain(
+      ".workbench-status[data-tone=warning]",
+    );
+    expect(normalizedCss).toContain(
+      ".workbench-status:has([data-slot=tooltip-trigger]), .workbench-status [data-slot=tooltip-trigger] { pointer-events: auto;",
+    );
     expect(normalizedCss).toContain(".panel-switch-row");
     expect(result).toContain(
       "max-[641px]:h-auto! max-[641px]:max-h-[min(62dvh,520px)]!",

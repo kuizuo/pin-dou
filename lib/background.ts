@@ -57,7 +57,7 @@ export function createBackgroundMask(
   }
   const dominant = [...buckets.values()].sort((a, b) => b.count - a.count)[0];
   if (!dominant)
-    throw new Error("像素稿的背景不够统一，请重新生成。原图没有被修改。");
+    throw new Error("背景不够统一，未能去除。图纸已保持不变。");
   const base = [
     dominant.red / dominant.count,
     dominant.green / dominant.count,
@@ -69,7 +69,7 @@ export function createBackgroundMask(
     ),
   );
   if (seeds.length < border.length / 2) {
-    throw new Error("像素稿的背景不够统一，请重新生成。原图没有被修改。");
+    throw new Error("背景不够统一，未能去除。图纸已保持不变。");
   }
 
   const visited = new Uint8Array(width * height);
@@ -94,7 +94,7 @@ export function createBackgroundMask(
   }
   const ratio = selected / opaque;
   if (ratio < MIN_BACKGROUND_RATIO || ratio > MAX_BACKGROUND_RATIO) {
-    throw new Error("没有可靠识别出纯色背景，请重新生成。原图没有被修改。");
+    throw new Error("没有可靠识别出纯色背景，图纸已保持不变。");
   }
   return visited;
 }

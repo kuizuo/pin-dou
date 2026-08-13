@@ -25,6 +25,7 @@ import {
   Share2,
   Square,
   Trash2,
+  TriangleAlert,
   Undo2,
   X,
 } from "lucide-react";
@@ -93,6 +94,7 @@ type WorkbenchTool
     | "fill"
     | "replace";
 type PanelTab = "adjust" | "colors" | "versions";
+type NoticeTone = "success" | "warning";
 
 const EDIT_TOOLS = [
   { id: "brush", label: "画笔", shortcut: "3", icon: Brush },
@@ -130,6 +132,47 @@ function ControlTooltip({
     <Tooltip>
       <TooltipTrigger render={children} />
       <TooltipContent side={side}>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function OverflowTooltip({ text }: { text: string }) {
+  const label = useRef<HTMLElement>(null);
+  const [truncated, setTruncated] = useState(false),
+    [open, setOpen] = useState(false);
+  useEffect(() => {
+    const element = label.current;
+    if (!element) return;
+    const check = () => setTruncated(element.scrollWidth > element.clientWidth);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [text, truncated]);
+  const content = (
+    <strong
+      ref={label}
+      tabIndex={truncated ? 0 : undefined}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+    >
+      {text}
+    </strong>
+  );
+  if (!truncated) return content;
+  return (
+    <Tooltip
+      open={open}
+      onOpenChange={setOpen}
+    >
+      <TooltipTrigger
+        delay={0}
+        closeOnClick={false}
+        render={content}
+      />
+      <TooltipContent side="top">{text}</TooltipContent>
     </Tooltip>
   );
 }
@@ -407,7 +450,8 @@ export function Result({
     excludedColorIds: [...project.settings.excludedColorIds],
   });
   const [preview, setPreview] = useState<string | null>(null),
-    [notice, setNotice] = useState("已保存");
+    [notice, setNoticeText] = useState("已保存"),
+    [noticeTone, setNoticeTone] = useState<NoticeTone>("success");
   const [comparison, setComparison] = useState<{
     original: string;
     current: string;
@@ -454,6 +498,11 @@ export function Result({
         || color.name.toLowerCase().includes(keyword),
     );
   }, [colorQuery]);
+
+  function setNotice(message: string, tone: NoticeTone = "success") {
+    setNoticeText(message);
+    setNoticeTone(tone);
+  }
 
   useEffect(() => {
     pendingCallback.current = onPendingChange;
@@ -706,6 +755,7 @@ export function Result({
     setAdjusting(true);
     setNotice("正在保存调整…");
     const current = projectRef.current;
+    let applied = false;
     try {
       const originalUrl = await readBlobAsDataUrl(
         current.generatedSource ?? current.source,
@@ -759,17 +809,25 @@ export function Result({
       setReplaceSource(null);
       setTool("locked");
       setNotice("调整已保存");
+      applied = true;
     }
     catch (error) {
+      const savedSettings = {
+        ...current.settings,
+        excludedColorIds: [...current.settings.excludedColorIds],
+      };
+      draftSettingsRef.current = savedSettings;
+      setDraftSettings(savedSettings);
       setNotice(
         error instanceof Error ? error.message : "调整失败，原图纸已保留。",
+        "warning",
       );
     }
     finally {
       adjustingRef.current = false;
       setAdjusting(false);
       if (
-        JSON.stringify(draftSettingsRef.current)
+        applied && JSON.stringify(draftSettingsRef.current)
         !== JSON.stringify(projectRef.current.settings)
       )
         scheduleAdjustments(draftSettingsRef.current);
@@ -1028,7 +1086,8 @@ export function Result({
         </TransformWrapper>
 
         <div
-          className="workbench-status max-[980px]:top-[calc(var(--workbench-control-size)+20px)]! max-[980px]:[.has-tool-properties_&]:top-[calc(var(--workbench-control-size)*2+32px)]! min-[980px]:top-3! min-[980px]:left-3! min-[980px]:max-w-[220px]!"
+          className="workbench-status max-[980px]:top-[calc(var(--workbench-control-size)+20px)]! max-[980px]:max-w-[calc(100%-16px)]! max-[980px]:[.has-tool-properties_&]:top-[calc(var(--workbench-control-size)*2+32px)]! min-[980px]:top-3! min-[980px]:left-3! min-[980px]:max-w-[220px]!"
+          data-tone={busy ? "busy" : noticeTone}
           role="status"
           aria-live="polite"
         >
@@ -1036,10 +1095,12 @@ export function Result({
             ? (
                 <LoaderCircle className="spin" />
               )
-            : (
-                <span className="status-dot" />
-              )}
-          <strong>{notice}</strong>
+            : noticeTone === "warning"
+              ? <TriangleAlert className="status-warning-icon" />
+              : (
+                  <span className="status-dot" />
+                )}
+          <OverflowTooltip text={notice} />
         </div>
 
         <div

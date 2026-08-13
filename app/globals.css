@@ -273,6 +273,21 @@ svg {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.workbench-status:has([data-slot="tooltip-trigger"]),
+.workbench-status [data-slot="tooltip-trigger"] {
+  pointer-events: auto;
+}
+.workbench-status[data-tone="warning"] {
+  border-color: #edb24b;
+  background: #fff8e8;
+}
+.workbench-status[data-tone="warning"] strong {
+  color: #8a4b08;
+}
+.status-warning-icon {
+  width: 15px;
+  color: #d97706;
+}
 .status-dot {
   width: 7px;
   height: 7px;
