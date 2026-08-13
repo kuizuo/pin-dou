@@ -331,7 +331,7 @@ function ToolColorProperties({
           色
         </small>
       </div>
-      <div className="workbench-tool-colors min-[980px]:flex-wrap!">
+      <div className="workbench-tool-colors min-[980px]:flex-wrap! min-[980px]:overflow-visible!">
         {colors.map(color => (
           <button
             type="button"

@@ -240,6 +240,10 @@ describe("统一图纸工作台", () => {
       "grid-template-columns: repeat(auto-fill, minmax(44px, 1fr))",
     );
     expect(normalizedCss).toContain(".color-series-heading::after");
+    expect(normalizedCss).toContain(
+      ".workbench-tool-colors { min-width: 0; flex: 1; display: flex; align-items: center; gap: 4px; overflow-x: auto;",
+    );
+    expect(result).toContain("min-[980px]:overflow-visible!");
   });
 
   it("下载旁的开关打开设置抽屉", () => {

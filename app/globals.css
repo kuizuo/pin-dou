@@ -391,12 +391,13 @@ svg {
   display: flex;
   align-items: center;
   gap: 8px;
-  overflow: visible;
+  overflow: hidden;
 }
 .workbench-tool-properties::-webkit-scrollbar {
   display: none;
 }
 .workbench-tool-properties-heading {
+  flex: 0 0 auto;
   padding-left: 6px;
   display: flex;
   align-items: baseline;
@@ -413,9 +414,18 @@ svg {
   font-size: 0.6rem;
 }
 .workbench-tool-colors {
+  min-width: 0;
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.workbench-tool-colors::-webkit-scrollbar {
+  display: none;
 }
 .workbench-tool-color {
   width: 34px;
