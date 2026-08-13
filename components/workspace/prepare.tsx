@@ -2,6 +2,7 @@
 
 import {
   ArrowLeft,
+  Crop as CropIcon,
   FlipHorizontal,
   FlipVertical,
   ImageIcon,
@@ -15,7 +16,11 @@ import {
   WandSparkles,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import ReactCrop, { type PercentCrop } from "react-image-crop";
+import ReactCrop, {
+  centerCrop,
+  makeAspectCrop,
+  type PercentCrop,
+} from "react-image-crop";
 import type {
   AiProvider,
   AiRequest,
@@ -36,9 +41,11 @@ export type Draft = {
 };
 
 function CropPreview({
+  aspect,
   draft,
   setDraft,
 }: {
+  aspect?: number;
   draft: Draft;
   setDraft: (draft: Draft) => void;
 }) {
@@ -50,11 +57,17 @@ function CropPreview({
       width: number;
       height: number;
     } | null>(null),
-    [frame, setFrame] = useState({ width: 0, height: 0 });
+    [frame, setFrame] = useState({ width: 0, height: 0 }),
+    draftRef = useRef(draft),
+    setDraftRef = useRef(setDraft);
   const crop: PercentCrop = {
     unit: "%",
     ...(transform.crop || { x: 0, y: 0, width: 100, height: 100 }),
   };
+  useEffect(() => {
+    draftRef.current = draft;
+    setDraftRef.current = setDraft;
+  }, [draft, setDraft]);
   useEffect(() => {
     let active = true;
     const previewTransform = {
@@ -123,6 +136,32 @@ function CropPreview({
     observer.observe(box);
     return () => observer.disconnect();
   }, [preview]);
+  useEffect(() => {
+    if (!aspect || !preview) return;
+    const next = centerCrop(
+        makeAspectCrop(
+          { unit: "%", width: 90 },
+          aspect,
+          preview.width,
+          preview.height,
+        ),
+        preview.width,
+        preview.height,
+      ),
+      current = draftRef.current;
+    setDraftRef.current({
+      ...current,
+      transform: {
+        ...current.transform,
+        crop: {
+          x: next.x,
+          y: next.y,
+          width: next.width,
+          height: next.height,
+        },
+      },
+    });
+  }, [aspect, preview]);
   return (
     <div
       ref={area}
@@ -136,6 +175,7 @@ function CropPreview({
               className="crop-frame rounded-lg border border-[#b9aeb2] bg-card shadow-[0_18px_45px_rgb(65_37_49/0.18)] [&_img]:block [&_img]:size-full"
               style={frame}
               crop={crop}
+              aspect={aspect}
               minWidth={48}
               minHeight={48}
               keepSelection
@@ -345,6 +385,7 @@ export function Prepare({
       = aiMode && (busy || candidates.length > 0 || failures.length > 0);
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false),
     [previewSrc, setPreviewSrc] = useState(""),
+    [cropAspect, setCropAspect] = useState<number>(),
     [turnstileToken, setTurnstileToken] = useState(""),
     [turnstileRefresh, setTurnstileRefresh] = useState(0);
   const uploadInput = useRef<HTMLInputElement>(null);
@@ -433,13 +474,14 @@ export function Prepare({
       {!showVariants && (
         <section className="overflow-hidden rounded-[22px] border border-border bg-card shadow-[0_18px_50px_rgb(69_43_53/0.08)]">
           <CropPreview
+            aspect={cropAspect}
             draft={draft}
             setDraft={setDraft}
           />
           <div className="flex min-h-[86px] items-center justify-between gap-[18px] border-t border-border p-3 max-[901px]:flex-col max-[901px]:items-stretch max-[641px]:gap-3">
             <div
-              className="flex min-w-0 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:min-h-11 [&>*]:flex-none [&_[data-slot=button]]:border-border! [&_[data-slot=button]]:bg-muted! [&_[data-slot=button]]:text-foreground! max-[641px]:grid max-[641px]:w-full max-[641px]:grid-cols-3 max-[641px]:gap-1.5 max-[641px]:overflow-visible max-[641px]:p-0 max-[641px]:[&>*]:w-full max-[641px]:[&>*]:min-w-0 max-[641px]:[&>*]:px-1.5"
-              aria-label="图片方向"
+              className="flex min-w-0 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:min-h-11 [&>*]:flex-none [&>button.active]:border-primary! [&>button.active]:bg-accent! [&>button.active]:text-accent-foreground! [&_[data-slot=button]]:border-border! [&_[data-slot=button]]:bg-muted! [&_[data-slot=button]]:text-foreground! max-[641px]:grid max-[641px]:w-full max-[641px]:grid-cols-3 max-[641px]:gap-1.5 max-[641px]:overflow-visible max-[641px]:p-0 max-[641px]:[&>*]:w-full max-[641px]:[&>*]:min-w-0 max-[641px]:[&>*]:px-1.5"
+              aria-label="图片方向与裁切比例"
             >
               <Button
                 variant="workbench"
@@ -478,13 +520,20 @@ export function Prepare({
                 <FlipVertical />
                 垂直翻转
               </Button>
+              <Button
+                className={cropAspect === 1 ? "active" : ""}
+                variant="workbench"
+                aria-pressed={cropAspect === 1}
+                onClick={() =>
+                  setCropAspect(current => current === 1 ? undefined : 1)}
+              >
+                <CropIcon />
+                正方形
+              </Button>
             </div>
-            <fieldset
-              className="m-0 flex min-w-0 flex-wrap items-center justify-end gap-2.5 border-0 p-0 max-[901px]:flex-col max-[901px]:items-start max-[641px]:grid max-[641px]:w-full max-[641px]:grid-cols-[minmax(0,1fr)_44px] max-[641px]:items-start max-[641px]:gap-2"
-              data-ai-mode={aiMode}
-            >
+            <fieldset className="m-0 flex min-w-0 items-center justify-end gap-2.5 border-0 p-0 max-[901px]:w-full max-[901px]:justify-between max-[641px]:grid max-[641px]:grid-cols-[minmax(0,1fr)_44px] max-[641px]:gap-2">
               <legend className="sr-only">生成方式</legend>
-              <div className="flex gap-[5px] [&_button]:inline-flex [&_button]:min-h-11 [&_button]:items-center [&_button]:justify-center [&_button]:gap-1.5 [&_button]:rounded-[10px] [&_button]:border [&_button]:border-border [&_button]:bg-muted [&_button]:px-4 [&_button]:font-[750] [&_button]:whitespace-nowrap [&_button]:text-foreground [&_button.active]:border-primary [&_button.active]:bg-accent [&_button.active]:text-accent-foreground [&_button.active]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary),transparent_35%)] [&_svg]:w-[17px] max-[641px]:col-span-full max-[641px]:row-start-1 max-[641px]:w-full max-[641px]:gap-1 max-[641px]:[[data-ai-mode=true]_&]:col-span-1 max-[641px]:[&_button]:min-w-0 max-[641px]:[&_button]:flex-1 max-[641px]:[&_button]:px-2">
+              <div className="flex gap-[5px] [&_button]:inline-flex [&_button]:min-h-11 [&_button]:items-center [&_button]:justify-center [&_button]:gap-1.5 [&_button]:rounded-[10px] [&_button]:border [&_button]:border-border [&_button]:bg-muted [&_button]:px-4 [&_button]:font-[750] [&_button]:whitespace-nowrap [&_button]:text-foreground [&_button.active]:border-primary [&_button.active]:bg-accent [&_button.active]:text-accent-foreground [&_button.active]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary),transparent_35%)] [&_svg]:w-[17px] max-[641px]:min-w-0 max-[641px]:gap-1 max-[641px]:[&_button]:min-w-0 max-[641px]:[&_button]:flex-1 max-[641px]:[&_button]:px-2">
                 <button
                   type="button"
                   aria-pressed={!aiMode}
@@ -503,24 +552,16 @@ export function Prepare({
                   AI 处理
                 </button>
               </div>
-              {aiMode && (
-                <div className="flex items-center gap-[7px] max-[901px]:w-full max-[901px]:justify-between max-[641px]:contents">
-                  <p className="m-0 flex max-w-[430px] items-center gap-1.5 text-[0.68rem] leading-[1.45] text-muted-foreground [&>svg]:w-[17px] [&>svg]:text-primary max-[901px]:max-w-none max-[641px]:col-span-full max-[641px]:row-start-2 max-[641px]:min-w-0 max-[641px]:items-start max-[641px]:px-0.5 max-[641px]:pt-0.5">
-                    <WandSparkles />
-                    AI 只做像素化并尽量保留原图颜色；图片仅用于本次生成。
-                  </p>
-                  <Button
-                    className="flex-none max-[641px]:col-start-2! max-[641px]:row-start-1! max-[641px]:size-11! max-[641px]:p-0!"
-                    type="button"
-                    variant="outline"
-                    size="icon-sm"
-                    aria-label={`AI 设置，当前使用${aiProvider === "gemini" ? " Gemini" : " Cloudflare"}`}
-                    onClick={() => setAiSettingsOpen(true)}
-                  >
-                    <Settings />
-                  </Button>
-                </div>
-              )}
+              <Button
+                className="flex-none max-[641px]:size-11! max-[641px]:p-0!"
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label={`AI 设置，当前使用${aiProvider === "gemini" ? " Gemini" : " Cloudflare"}`}
+                onClick={() => setAiSettingsOpen(true)}
+              >
+                <Settings />
+              </Button>
             </fieldset>
           </div>
         </section>

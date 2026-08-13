@@ -36,7 +36,7 @@ export function Turnstile({
       "sitekey": sitekey,
       "action": "pixelize",
       "theme": "auto",
-      "appearance": "interaction-only",
+      "appearance": "always",
       "callback": (token: string) => callback.current(token),
       "error-callback": () => callback.current(""),
       "expired-callback": () => callback.current(""),

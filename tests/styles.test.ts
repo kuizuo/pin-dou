@@ -77,6 +77,11 @@ describe("统一图纸工作台", () => {
     expect(prepare).toContain("生成方式");
     expect(prepare).toContain("本地处理");
     expect(prepare).toContain("AI 处理");
+    expect(prepare).toContain("正方形");
+    expect(prepare).toContain("<CropIcon />");
+    expect(prepare).not.toContain("3:4");
+    expect(prepare).not.toContain("4:3");
+    expect(prepare).toContain("aspect={aspect}");
     expect(prepare).not.toContain("颜色上限");
     expect(prepare).not.toContain("图案最长边");
     expect(prepare).toContain("w-[min(1320px,calc(100%-40px))]");
@@ -88,7 +93,10 @@ describe("统一图纸工作台", () => {
     expect(aiSettings).toContain("Cloudflare AI");
     expect(aiSettings).toContain("Gemini API Key");
     expect(aiSettings).toContain("不会保存到作品或浏览器");
-    expect(turnstile).toContain("\"appearance\": \"interaction-only\"");
+    expect(aiSettings).toContain("AI 只做像素化并尽量保留原图颜色");
+    expect(prepare).not.toContain("AI 只做像素化并尽量保留原图颜色");
+    expect(aiSettings).toContain("hidden={provider !== \"cloudflare\"}");
+    expect(turnstile).toContain("\"appearance\": \"always\"");
     expect(prepare).toContain("AI 设置，当前使用");
     expect(prepare).not.toContain("gemini-key-field");
     expect(
@@ -333,9 +341,7 @@ describe("统一图纸工作台", () => {
 
   it("手机端图片工具等宽排列，AI 设置与生成方式保持同一行", () => {
     expect(prepare).toContain("max-[641px]:grid-cols-3");
-    expect(prepare).toContain(
-      "max-[641px]:[[data-ai-mode=true]_&]:col-span-1",
-    );
+    expect(prepare).toContain("grid-cols-[minmax(0,1fr)_44px]");
     expect(prepare).toContain("max-[641px]:size-11!");
   });
 

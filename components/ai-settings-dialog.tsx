@@ -79,6 +79,9 @@ export function AiSettingsDialog({
             <X />
           </Button>
         </header>
+        <p className="m-0 rounded-[11px] bg-muted px-3.5 py-3 text-[0.7rem] leading-[1.5] text-muted-foreground">
+          AI 只做像素化并尽量保留原图颜色；图片仅用于本次生成。
+        </p>
         <div
           className="grid grid-cols-2 gap-2.5 max-[640px]:grid-cols-1"
           role="group"
@@ -111,62 +114,63 @@ export function AiSettingsDialog({
             {provider === "gemini" && <Check />}
           </button>
         </div>
-        {provider === "cloudflare"
-          ? (
-              <div className="ai-provider-credentials">
-                <strong>完成安全验证</strong>
-                <small>验证只用于保护公共图片处理服务，不会创建账号。</small>
-                <Turnstile
-                  refreshKey={turnstileRefresh}
-                  onToken={onTurnstileToken}
-                />
-              </div>
-            )
-          : (
-              <div className="ai-provider-credentials">
-                <label
-                  className="flex items-center justify-between gap-2.5 text-[0.7rem] font-extrabold"
-                  htmlFor="gemini-key"
-                >
-                  <span className="inline-flex items-center gap-[5px] [&_svg]:size-3.5">
-                    <KeyRound />
-                    Gemini API Key
-                  </span>
-                  <a
-                    className="inline-flex items-center gap-[5px] whitespace-nowrap text-primary no-underline [&_svg]:size-3.5"
-                    href="https://aistudio.google.com/app/api-keys"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    获取密钥
-                    <ExternalLink />
-                  </a>
-                </label>
-                <div className="relative">
-                  <input
-                    className="h-[42px] w-full rounded-[9px] border border-border bg-card py-0 pr-[42px] pl-[11px] text-[0.74rem] text-foreground outline-none focus-visible:border-primary focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--primary),transparent_82%)]"
-                    id="gemini-key"
-                    type={keyVisible ? "text" : "password"}
-                    value={geminiKey}
-                    autoComplete="off"
-                    spellCheck={false}
-                    placeholder="粘贴你的 Gemini API Key"
-                    onChange={event => onGeminiKeyChange(event.target.value)}
-                  />
-                  <Button
-                    className="absolute top-1 right-1 min-h-[34px] min-w-[34px]"
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={keyVisible ? "隐藏密钥" : "显示密钥"}
-                    onClick={() => setKeyVisible(value => !value)}
-                  >
-                    {keyVisible ? <EyeOff /> : <Eye />}
-                  </Button>
-                </div>
-                <small>密钥只在当前页面使用，不会保存到作品或浏览器。</small>
-              </div>
-            )}
+        <div
+          className="ai-provider-credentials"
+          hidden={provider !== "cloudflare"}
+        >
+          <strong>完成安全验证</strong>
+          <small>验证只用于保护公共图片处理服务，不会创建账号。</small>
+          <Turnstile
+            refreshKey={turnstileRefresh}
+            onToken={onTurnstileToken}
+          />
+        </div>
+        <div
+          className="ai-provider-credentials"
+          hidden={provider !== "gemini"}
+        >
+          <label
+            className="flex items-center justify-between gap-2.5 text-[0.7rem] font-extrabold"
+            htmlFor="gemini-key"
+          >
+            <span className="inline-flex items-center gap-[5px] [&_svg]:size-3.5">
+              <KeyRound />
+              Gemini API Key
+            </span>
+            <a
+              className="inline-flex items-center gap-[5px] whitespace-nowrap text-primary no-underline [&_svg]:size-3.5"
+              href="https://aistudio.google.com/app/api-keys"
+              target="_blank"
+              rel="noreferrer"
+            >
+              获取密钥
+              <ExternalLink />
+            </a>
+          </label>
+          <div className="relative">
+            <input
+              className="h-[42px] w-full rounded-[9px] border border-border bg-card py-0 pr-[42px] pl-[11px] text-[0.74rem] text-foreground outline-none focus-visible:border-primary focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--primary),transparent_82%)]"
+              id="gemini-key"
+              type={keyVisible ? "text" : "password"}
+              value={geminiKey}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="粘贴你的 Gemini API Key"
+              onChange={event => onGeminiKeyChange(event.target.value)}
+            />
+            <Button
+              className="absolute top-1 right-1 min-h-[34px] min-w-[34px]"
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={keyVisible ? "隐藏密钥" : "显示密钥"}
+              onClick={() => setKeyVisible(value => !value)}
+            >
+              {keyVisible ? <EyeOff /> : <Eye />}
+            </Button>
+          </div>
+          <small>密钥只在当前页面使用，不会保存到作品或浏览器。</small>
+        </div>
         <footer className="flex justify-end">
           <Button
             className="min-w-[108px]!"
