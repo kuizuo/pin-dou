@@ -169,7 +169,9 @@ export function AiSettingsDialog({
               {keyVisible ? <EyeOff /> : <Eye />}
             </Button>
           </div>
-          <small>密钥只在当前页面使用，不会保存到作品或浏览器。</small>
+          <small>
+            密钥保存在当前浏览器，下次可直接使用；不会写入作品或备份。
+          </small>
         </div>
         <footer className="flex justify-end">
           <Button

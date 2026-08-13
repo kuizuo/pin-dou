@@ -67,6 +67,7 @@ type WorkspaceProps = {
 type SampleImage = { name: string; src: string };
 
 const GENERATION_MODE_KEY = "pindou-generation-mode-v1";
+const GEMINI_KEY_STORAGE_KEY = "pindou-gemini-key-v1";
 
 function savedGenerationMode(): GenerationMode {
   if (typeof window === "undefined") return DEFAULT_SETTINGS.mode;
@@ -77,6 +78,16 @@ function savedGenerationMode(): GenerationMode {
   }
   catch {
     return DEFAULT_SETTINGS.mode;
+  }
+}
+
+function savedGeminiKey() {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(GEMINI_KEY_STORAGE_KEY) || "";
+  }
+  catch {
+    return "";
   }
 }
 
@@ -94,7 +105,7 @@ export function Workspace({
   const [message, setMessage] = useState("");
   const [preferredMode, setPreferredMode] = useState(savedGenerationMode);
   const [aiProvider, setAiProvider] = useState<AiProvider>("cloudflare");
-  const [geminiKey, setGeminiKey] = useState("");
+  const [geminiKey, setGeminiKey] = useState(savedGeminiKey);
   const [aiCandidates, setAiCandidates] = useState<AiStyleCandidate[]>([]);
   const [aiFailures, setAiFailures] = useState<AiStyleFailure[]>([]);
   const [samples, setSamples] = useState<SampleImage[]>([]);
@@ -109,6 +120,7 @@ export function Workspace({
   >(null);
   const workbenchPendingRef = useRef(false);
   const currentProjectIdRef = useRef(initialProjectId || null);
+  const aiRunRef = useRef(0);
 
   async function refresh() {
     setProjects(await listProjects());
@@ -197,6 +209,15 @@ export function Workspace({
     setPreferredMode(mode);
     try {
       window.localStorage.setItem(GENERATION_MODE_KEY, mode);
+    }
+    catch { /* private browsing or storage restrictions keep the current session working */ }
+  }
+
+  function rememberGeminiKey(value: string) {
+    setGeminiKey(value);
+    try {
+      if (value) window.localStorage.setItem(GEMINI_KEY_STORAGE_KEY, value);
+      else window.localStorage.removeItem(GEMINI_KEY_STORAGE_KEY);
     }
     catch { /* private browsing or storage restrictions keep the current session working */ }
   }
@@ -344,6 +365,7 @@ export function Workspace({
 
   async function generateAiVariant(request: AiRequest) {
     if (!draft) return;
+    const run = ++aiRunRef.current;
     setBusy(true);
     setMessage("AI 正在进行像素化处理…");
     setAiCandidates([]);
@@ -353,11 +375,18 @@ export function Workspace({
         draft.dataUrl,
         draft.transform,
       );
-      const candidate = await generatePixelStyle(selected, request, setMessage);
+      if (aiRunRef.current !== run) return;
+      const candidate = await generatePixelStyle(
+        selected,
+        request,
+        progress => aiRunRef.current === run && setMessage(progress),
+      );
+      if (aiRunRef.current !== run) return;
       setAiCandidates([candidate]);
-      setMessage("图纸已经准备好，请确认后继续");
+      setMessage("图片处理完成，请确认效果");
     }
     catch (error) {
+      if (aiRunRef.current !== run) return;
       setAiFailures([
         {
           variant: "pixel",
@@ -369,7 +398,7 @@ export function Workspace({
       );
     }
     finally {
-      setBusy(false);
+      if (aiRunRef.current === run) setBusy(false);
     }
   }
 
@@ -389,7 +418,7 @@ export function Workspace({
     const generatedSource = await fetch(candidate.originalImage).then(
       response => response.blob(),
     );
-    const settings = draft.settings;
+    const settings = { ...draft.settings, background: "keep" as const };
     setDraft({ ...draft, settings });
     await finishGeneration(
       candidate.originalImage,
@@ -513,10 +542,12 @@ export function Workspace({
           onBack={home}
           onFile={file => void chooseFile(file)}
           onChooseCandidate={candidate => void chooseAiCandidate(candidate)}
-          onGeminiKeyChange={setGeminiKey}
+          onGeminiKeyChange={rememberGeminiKey}
           onGenerate={request => void generate(request)}
           onModeChange={rememberGenerationMode}
-          onRegenerate={() => {
+          onReturnToImage={() => {
+            aiRunRef.current += 1;
+            setBusy(false);
             setAiCandidates([]);
             setAiFailures([]);
             setMessage("");

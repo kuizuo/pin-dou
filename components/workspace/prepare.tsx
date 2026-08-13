@@ -270,8 +270,8 @@ function AiPreviewDialog({
       <div className="pattern-preview-card max-[641px]:h-auto! max-[641px]:max-h-[78dvh]!">
         <div className="pattern-preview-heading max-[641px]:flex-col! max-[641px]:items-start!">
           <div>
-            <h2 id="ai-preview-title">AI 智能图纸预览</h2>
-            <p>检查像素效果和原图颜色，不满意可以返回后重新生成</p>
+            <h2 id="ai-preview-title">AI 处理效果预览</h2>
+            <p>检查像素效果和原图颜色，不满意可以重新生成</p>
           </div>
           <Button
             variant="outline"
@@ -283,7 +283,7 @@ function AiPreviewDialog({
         <div className="pattern-preview-scroll max-[641px]:max-h-[calc(78dvh-68px)]! max-[641px]:p-3!">
           <img
             src={src}
-            alt="AI 智能图纸大图预览"
+            alt="AI 处理效果大图预览"
           />
         </div>
       </div>
@@ -306,7 +306,7 @@ function VariantCard({
   onPreview: (src: string) => void;
   onRetry: () => void;
 }) {
-  const title = "AI 智能图纸";
+  const title = "AI 处理效果";
   return (
     <article
       className={`grid min-w-0 grid-cols-[140px_minmax(0,1fr)_auto] items-center gap-3 rounded-[15px] border border-border p-2.5 [&_small]:mt-1 [&_small]:block [&_small]:text-[0.67rem] [&_small]:leading-[1.4] [&_small]:text-muted-foreground [&_small]:[overflow-wrap:anywhere] [&_strong]:block max-[901px]:grid-cols-[108px_minmax(0,1fr)] max-[641px]:grid-cols-[82px_minmax(0,1fr)_auto] ${candidate ? "bg-card" : "bg-muted"}`}
@@ -316,7 +316,7 @@ function VariantCard({
             <button
               type="button"
               className="relative grid h-[108px] w-[140px] place-items-center overflow-hidden rounded-[10px] border-0 bg-[#eee7e9] p-0 text-muted-foreground [&_img]:size-full [&_img]:object-contain [&_span]:absolute [&_span]:right-1.5 [&_span]:bottom-1.5 [&_span]:flex [&_span]:items-center [&_span]:gap-1 [&_span]:rounded-[7px] [&_span]:bg-[rgb(24_34_53/0.78)] [&_span]:px-1.5 [&_span]:py-1 [&_span]:text-[0.6rem] [&_span]:text-white [&_span_svg]:size-[13px] max-[901px]:w-[108px] max-[641px]:h-[74px] max-[641px]:w-[82px]"
-              aria-label="预览 AI 智能图纸大图"
+              aria-label="预览 AI 处理效果大图"
               onClick={() => onPreview(candidate.image)}
             >
               <img
@@ -339,18 +339,23 @@ function VariantCard({
         <small>
           {failure?.message
             || (candidate
-              ? "点击图片查看效果，确认后继续生成"
+              ? "点击图片查看效果，满意后继续生成图纸"
               : "正在转换为像素风格并保留原图颜色")}
         </small>
       </div>
       {candidate
         ? (
-            <Button
-              className="max-[901px]:col-span-full! max-[901px]:w-full! max-[641px]:col-auto! max-[641px]:w-auto! max-[641px]:px-2.5!"
-              onClick={() => onChoose(candidate)}
-            >
-              使用这个方案
-            </Button>
+            <div className="flex gap-2 max-[901px]:col-span-full max-[901px]:w-full max-[901px]:[&>button]:flex-1">
+              <Button
+                variant="outline"
+                onClick={onRetry}
+              >
+                重新生成
+              </Button>
+              <Button onClick={() => onChoose(candidate)}>
+                使用这个方案
+              </Button>
+            </div>
           )
         : failure
           ? (
@@ -374,7 +379,7 @@ export function Prepare({
   onFile,
   onGenerate,
   onModeChange,
-  onRegenerate,
+  onReturnToImage,
   busy,
   message,
   candidates,
@@ -395,7 +400,7 @@ export function Prepare({
   onFile: (file?: File) => void;
   onGenerate: (request?: AiRequest) => void;
   onModeChange: (mode: GenerationSettings["mode"]) => void;
-  onRegenerate: () => void;
+  onReturnToImage: () => void;
   busy: boolean;
   message: string;
   candidates: AiStyleCandidate[];
@@ -451,7 +456,7 @@ export function Prepare({
           />
           <Button
             variant="outline"
-            onClick={onBack}
+            onClick={showVariants ? onReturnToImage : onBack}
           >
             <ArrowLeft />
             返回
@@ -479,29 +484,26 @@ export function Prepare({
             </Button>
           )}
         </div>
-        <Button
-          className="max-[640px]:px-2.5"
-          disabled={busy}
-          onClick={() =>
-            showVariants
-              ? onRegenerate()
-              : aiMode
-                ? runAi(onGenerate)
-                : onGenerate()}
-        >
-          {busy
-            ? (
-                <LoaderCircle className="spin" />
-              )
-            : aiMode
+        {!showVariants && (
+          <Button
+            className="max-[640px]:px-2.5"
+            disabled={busy}
+            onClick={() => aiMode ? runAi(onGenerate) : onGenerate()}
+          >
+            {busy
               ? (
-                  <Sparkles />
+                  <LoaderCircle className="spin" />
                 )
-              : (
-                  <WandSparkles />
-                )}
-          {busy ? "正在处理" : showVariants ? "重新生成" : "生成图纸"}
-        </Button>
+              : aiMode
+                ? (
+                    <Sparkles />
+                  )
+                : (
+                    <WandSparkles />
+                  )}
+            {busy ? "正在处理" : "生成图纸"}
+          </Button>
+        )}
       </header>
       {!showVariants && (
         <section className="overflow-hidden rounded-[22px] border border-border bg-card shadow-[0_18px_50px_rgb(69_43_53/0.08)]">
@@ -602,14 +604,14 @@ export function Prepare({
       {showVariants && (
         <section
           className="rounded-[20px] border border-border bg-card p-5 shadow-[0_12px_36px_rgb(69_43_53/0.06)] max-[641px]:px-2.5 max-[641px]:py-3.5"
-          aria-label="AI 处理方案"
+          aria-label="AI 图片处理方案"
         >
           <div className="mb-3.5 flex items-end justify-between gap-[18px] [&_h2]:mt-1 [&_h2]:mb-0 [&_h2]:text-xl [&>p]:m-0 [&>p]:flex [&>p]:items-center [&>p]:gap-1.5 [&>p]:text-[0.72rem] [&>p]:text-muted-foreground max-[641px]:flex-col max-[641px]:items-start">
             <div>
-              <span className="eyebrow">AI 智能图纸</span>
+              <span className="eyebrow">AI 图片处理</span>
               <h2>
                 {busy
-                  ? "正在为你整理图纸"
+                  ? "正在处理图片"
                   : candidates.length
                     ? "打开大图确认效果"
                     : "这次没有生成成功"}

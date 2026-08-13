@@ -11,7 +11,7 @@ bun run dev
 
 打开 `http://localhost:3000`。本地处理是默认方式，不需要密钥，也不会下载任何图片处理模型。
 
-AI 模式可以使用 Cloudflare AI，也可以使用 Gemini 3.1 Flash Image。Gemini 需要用户在设置弹窗填写自己的 API Key，密钥只用于当次请求，不会写入作品或浏览器；纯色背景删除、MARD 配色和图纸生成仍在浏览器中完成。
+AI 模式可以使用 Cloudflare AI，也可以使用 Gemini 3.1 Flash Image。Gemini 需要用户在设置弹窗填写自己的 API Key，密钥会保存在当前浏览器，但不会写入作品或备份；纯色背景删除、MARD 配色和图纸生成仍在浏览器中完成。
 
 本地联调 Cloudflare 时复制 `.env.example` 为 `.env.local`，再复制 `worker/.dev.vars.example` 为 `worker/.dev.vars`，分别运行 `bun run dev` 和 `bun run worker:dev`。
 

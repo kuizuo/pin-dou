@@ -92,7 +92,8 @@ describe("统一图纸工作台", () => {
   it("Cloudflare 与 Gemini 都在 AI 设置弹窗中，密钥不挤占主界面", () => {
     expect(aiSettings).toContain("Cloudflare AI");
     expect(aiSettings).toContain("Gemini API Key");
-    expect(aiSettings).toContain("不会保存到作品或浏览器");
+    expect(aiSettings).toContain("保存在当前浏览器");
+    expect(aiSettings).toContain("不会写入作品或备份");
     expect(aiSettings).toContain("AI 只做像素化并尽量保留原图颜色");
     expect(prepare).not.toContain("AI 只做像素化并尽量保留原图颜色");
     expect(aiSettings).toContain("hidden={provider !== \"cloudflare\"}");
@@ -103,6 +104,15 @@ describe("统一图纸工作台", () => {
       [prepare, result, aiSettings, ai].join("\n"),
     ).not.toContain("localStorage");
     expect(workspace).toContain("pindou-generation-mode-v1");
+  });
+
+  it("Gemini 密钥保存在当前浏览器，清空后删除", () => {
+    expect(workspace).toContain("GEMINI_KEY_STORAGE_KEY");
+    expect(workspace).toContain("savedGeminiKey");
+    expect(workspace).toContain("window.localStorage.getItem(GEMINI_KEY_STORAGE_KEY)");
+    expect(workspace).toContain("window.localStorage.setItem(GEMINI_KEY_STORAGE_KEY, value)");
+    expect(workspace).toContain("window.localStorage.removeItem(GEMINI_KEY_STORAGE_KEY)");
+    expect(workspace).toContain("onGeminiKeyChange={rememberGeminiKey}");
   });
 
   it("移除独立编辑页，把查看和编辑放在同一画布", () => {
@@ -303,17 +313,36 @@ describe("统一图纸工作台", () => {
     expect(normalizedCss).not.toContain(".panel-ai-picker");
   });
 
-  it("AI 处理时隐藏裁切区，结果支持大图预览并返回原图裁切", () => {
+  it("AI 处理时隐藏裁切区和右上角按钮，并可返回当前图片", () => {
     expect(prepare).toContain("{!showVariants && (");
-    expect(prepare).toContain("预览 AI 智能图纸大图");
-    expect(prepare).toContain("AI 智能图纸大图预览");
-    expect(prepare).toContain("showVariants ? \"重新生成\" : \"生成图纸\"");
-    expect(prepare).toContain("? onRegenerate()");
-    expect(workspace).toContain("onRegenerate={() => {");
-    expect(workspace).not.toContain("onRegenerate={newProject}");
+    expect(prepare).toContain("预览 AI 处理效果大图");
+    expect(prepare).toContain("AI 处理效果大图预览");
+    expect(prepare).toContain("onClick={showVariants ? onReturnToImage : onBack}");
+    expect(prepare).toContain("{!showVariants && (\n          <Button");
+    expect(prepare).not.toContain("showVariants ? \"重新生成\"");
+    expect(workspace).toContain("onReturnToImage={() => {");
+    expect(workspace).toContain("aiRunRef.current += 1");
     expect(prepare).not.toContain("重新截取");
     expect(prepare).toContain("AI 处理");
     expect(prepare).toContain("dialog.current?.showModal()");
+  });
+
+  it("AI 方案不去背景，避免背景识别失败阻断生成", () => {
+    expect(workspace).toContain(
+      "const settings = { ...draft.settings, background: \"keep\" as const };",
+    );
+  });
+
+  it("AI 处理文案说明正在处理图片，成功后可重新生成", () => {
+    expect(prepare).toContain("<span className=\"eyebrow\">AI 图片处理</span>");
+    expect(prepare).toContain("? \"正在处理图片\"");
+    expect(prepare).toContain("const title = \"AI 处理效果\"");
+    expect(prepare).not.toContain("正在为你整理图纸");
+    expect(workspace).toContain("图片处理完成，请确认效果");
+    const regenerate = prepare.indexOf("onClick={onRetry}");
+    const choose = prepare.indexOf("onClick={() => onChoose(candidate)}");
+    expect(regenerate).toBeGreaterThan(-1);
+    expect(regenerate).toBeLessThan(choose);
   });
 
   it("记住上一次选择的图片处理方式", () => {
