@@ -10,7 +10,6 @@ import {
   Grid2X2,
   Hand,
   LoaderCircle,
-  Lock,
   Maximize2,
   Minus,
   PaintBucket,
@@ -96,8 +95,7 @@ import {
 import { DEFAULT_TRANSFORM } from "@/lib/types";
 
 type WorkbenchTool
-  = | "locked"
-    | "hand"
+  = | "hand"
     | "brush"
     | "eraser"
     | "fill"
@@ -109,13 +107,10 @@ type HistoryEntry = Pick<
   "backgroundRemoved" | "pattern" | "processedSource" | "settings"
 > & { hasManualEdits: boolean };
 
-const MANUAL_EDIT_SIZE_NOTICE
-  = "已有手工编辑，不能修改格数；如需改格数，请先恢复到自动生成的图纸。";
-
 const EDIT_TOOLS = [
-  { id: "brush", label: "画笔", shortcut: "3", icon: Brush },
-  { id: "eraser", label: "橡皮", shortcut: "4", icon: Eraser },
-  { id: "fill", label: "填充", shortcut: "5", icon: PaintBucket },
+  { id: "brush", label: "画笔", shortcut: "2", icon: Brush },
+  { id: "eraser", label: "橡皮", shortcut: "3", icon: Eraser },
+  { id: "fill", label: "填充", shortcut: "4", icon: PaintBucket },
 ] as const;
 
 function colorTileStyle(color: BeadColor) {
@@ -190,6 +185,110 @@ function OverflowTooltip({ text }: { text: string }) {
       />
       <TooltipContent side="top">{text}</TooltipContent>
     </Tooltip>
+  );
+}
+
+function PresetNumberControl({
+  disabled = false,
+  label,
+  max,
+  min,
+  onChange,
+  presets,
+  suffix,
+  value,
+}: {
+  disabled?: boolean;
+  label: string;
+  max: number;
+  min: number;
+  onChange: (value: number) => void;
+  presets: readonly number[];
+  suffix: string;
+  value: number;
+}) {
+  const input = useRef<HTMLInputElement>(null),
+    isCustomValue = !presets.includes(value),
+    [customizing, setCustomizing] = useState(isCustomValue);
+
+  function commitInput(element: HTMLInputElement) {
+    const parsed = element.valueAsNumber;
+    if (!Number.isFinite(parsed)) {
+      element.value = String(value);
+      setCustomizing(isCustomValue);
+      return;
+    }
+    const next = Math.min(max, Math.max(min, Math.round(parsed)));
+    element.value = String(next);
+    setCustomizing(!presets.includes(next));
+    if (next !== value) onChange(next);
+  }
+
+  return (
+    <fieldset
+      className="panel-number-control"
+      disabled={disabled}
+    >
+      <legend>
+        {label}
+        <small>
+          {min}
+          –
+          {max}
+          {suffix}
+        </small>
+      </legend>
+      <div>
+        {presets.map(preset => (
+          <button
+            key={preset}
+            type="button"
+            aria-pressed={value === preset}
+            onClick={() => {
+              setCustomizing(false);
+              onChange(preset);
+            }}
+          >
+            {preset}
+            {suffix}
+          </button>
+        ))}
+        {customizing || isCustomValue
+          ? (
+              <label data-active="true">
+                <input
+                  key={value}
+                  ref={input}
+                  aria-label={`自定义${label}`}
+                  type="number"
+                  inputMode="numeric"
+                  min={min}
+                  max={max}
+                  defaultValue={value}
+                  onBlur={event => commitInput(event.currentTarget)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") event.currentTarget.blur();
+                  }}
+                />
+                <span>{suffix}</span>
+              </label>
+            )
+          : (
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomizing(true);
+                  requestAnimationFrame(() => {
+                    input.current?.focus();
+                    input.current?.select();
+                  });
+                }}
+              >
+                自定义
+              </button>
+            )}
+      </div>
+    </fieldset>
   );
 }
 
@@ -467,7 +566,7 @@ export function Result({
 }) {
   const [pattern, setPattern] = useState(project.pattern);
   const [hasManualEdits, setHasManualEdits] = useState(false);
-  const [tool, setTool] = useState<WorkbenchTool>("locked");
+  const [tool, setTool] = useState<WorkbenchTool>("hand");
   const [selected, setSelected] = useState(
     patternStats(project.pattern)[0]?.color.id || "H7",
   );
@@ -505,6 +604,7 @@ export function Result({
   const [versionName, setVersionName] = useState(""),
     [colorQuery, setColorQuery] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false),
+    [pendingLongestEdge, setPendingLongestEdge] = useState<number | null>(null),
     [deleting, setDeleting] = useState(false),
     [processingGuideOpen, setProcessingGuideOpen] = useState(false);
   const canvasRef = useRef<HTMLElement>(null),
@@ -537,7 +637,7 @@ export function Result({
     id => BEAD_COLORS.find(color => color.id === id) || [],
   );
   const busy = saving || adjusting || deleting;
-  const isEditing = !["locked", "hand"].includes(tool);
+  const isEditing = tool !== "hand";
   const showToolColors = ["brush", "eraser", "fill", "replace"].includes(tool);
   const settingsPending
     = JSON.stringify(draftSettings) !== JSON.stringify(project.settings);
@@ -622,13 +722,11 @@ export function Result({
     setReplaceSource(null);
     setTool(next);
     setNotice(
-      next === "locked"
-        ? "编辑已锁定"
-        : next === "hand"
-          ? "拖动画布查看"
-          : next === "eraser"
-            ? "橡皮已启用"
-            : `当前颜色 ${selected}`,
+      next === "hand"
+        ? "拖动画布查看"
+        : next === "eraser"
+          ? "橡皮已启用"
+          : `当前颜色 ${selected}`,
     );
   }
 
@@ -851,7 +949,10 @@ export function Result({
     }
   }
 
-  async function applyAdjustments(requestedSettings: GenerationSettings) {
+  async function applyAdjustments(
+    requestedSettings: GenerationSettings,
+    discardManualEdits = false,
+  ) {
     if (adjustingRef.current || saving) return;
     if (
       JSON.stringify(requestedSettings)
@@ -875,16 +976,7 @@ export function Result({
         patternRef.current.cells,
         generatedCurrent.cells,
       );
-      const longestEdgeBlocked
-        = edits.length > 0
-          && requestedSettings.longestEdge !== current.settings.longestEdge;
-      const settings = longestEdgeBlocked
-        ? { ...requestedSettings, longestEdge: current.settings.longestEdge }
-        : requestedSettings;
-      if (longestEdgeBlocked) {
-        draftSettingsRef.current = settings;
-        setDraftSettings(settings);
-      }
+      const settings = requestedSettings;
       const backgroundRemoved = settings.background !== "keep";
       let sourceUrl = originalUrl;
       if (backgroundRemoved) {
@@ -912,7 +1004,7 @@ export function Result({
         transform,
         backgroundRemoved ? originalUrl : undefined,
       );
-      const nextPattern = edits.length
+      const nextPattern = edits.length && !discardManualEdits
         ? {
             ...generatedPattern,
             cells: applyCellEdits(
@@ -941,14 +1033,13 @@ export function Result({
         historyEntry(current),
       ]);
       setFuture([]);
-      setHasManualEdits(edits.length > 0);
+      setHasManualEdits(edits.length > 0 && !discardManualEdits);
       setReplaceSource(null);
-      setTool("locked");
+      setTool("hand");
       setNotice(
-        longestEdgeBlocked
-          ? MANUAL_EDIT_SIZE_NOTICE
+        discardManualEdits && edits.length
+          ? "格数已更新，手工编辑已舍弃"
           : "调整已保存",
-        longestEdgeBlocked ? "warning" : "success",
       );
       applied = true;
     }
@@ -983,6 +1074,32 @@ export function Result({
       () => void applyAdjustments(draftSettingsRef.current),
       500,
     );
+  }
+
+  function requestLongestEdge(longestEdge: number) {
+    if (
+      hasManualEdits
+      && longestEdge !== projectRef.current.settings.longestEdge
+    ) {
+      setPendingLongestEdge(longestEdge);
+      return;
+    }
+    scheduleAdjustments({
+      ...draftSettingsRef.current,
+      longestEdge,
+    });
+  }
+
+  function confirmLongestEdge() {
+    if (pendingLongestEdge === null) return;
+    const next = {
+      ...draftSettingsRef.current,
+      longestEdge: pendingLongestEdge,
+    };
+    setPendingLongestEdge(null);
+    draftSettingsRef.current = next;
+    setDraftSettings(next);
+    void applyAdjustments(next, true);
   }
 
   async function confirmDelete() {
@@ -1062,7 +1179,7 @@ export function Result({
       setHistory([]);
       setFuture([]);
       setReplaceSource(null);
-      setTool("locked");
+      setTool("hand");
       setNotice(`已恢复“${version.name}”，当前图纸已备份`);
     }
     catch (error) {
@@ -1138,12 +1255,11 @@ export function Result({
       }
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       const shortcut: Record<string, WorkbenchTool> = {
-        1: "locked",
-        2: "hand",
-        3: "brush",
-        4: "eraser",
-        5: "fill",
-        6: "replace",
+        1: "hand",
+        2: "brush",
+        3: "eraser",
+        4: "fill",
+        5: "replace",
         b: "brush",
         e: "eraser",
         f: "fill",
@@ -1156,7 +1272,7 @@ export function Result({
         keyboardActions.current?.chooseTool(shortcut[key]);
       }
       else if (event.key === "Escape")
-        keyboardActions.current?.chooseTool("locked");
+        keyboardActions.current?.chooseTool("hand");
       else if (["+", "="].includes(event.key))
         transformRef.current?.zoomIn(0.25, 0);
       else if (event.key === "-") transformRef.current?.zoomOut(0.25, 0);
@@ -1254,20 +1370,7 @@ export function Result({
           role="toolbar"
           aria-label="编辑工具"
         >
-          <ControlTooltip label="锁定编辑（1 或 Esc）">
-            <Button
-              variant="outline"
-              size="sm"
-              aria-pressed={tool === "locked"}
-              aria-label="锁定编辑"
-              onClick={() => chooseTool("locked")}
-            >
-              <Lock />
-              <span>锁定</span>
-              <kbd>1</kbd>
-            </Button>
-          </ControlTooltip>
-          <ControlTooltip label="抓手（2、H 或按住空格）">
+          <ControlTooltip label="抓手（1、H、Esc 或按住空格）">
             <Button
               variant="outline"
               size="sm"
@@ -1277,7 +1380,7 @@ export function Result({
             >
               <Hand />
               <span>抓手</span>
-              <kbd>2</kbd>
+              <kbd>1</kbd>
             </Button>
           </ControlTooltip>
           <i />
@@ -1300,7 +1403,7 @@ export function Result({
               </Button>
             </ControlTooltip>
           ))}
-          <ControlTooltip label="整色替换（6 或 R）">
+          <ControlTooltip label="整色替换（5 或 R）">
             <Button
               variant="outline"
               size="sm"
@@ -1311,7 +1414,7 @@ export function Result({
             >
               <Replace />
               <span>整色替换</span>
-              <kbd>6</kbd>
+              <kbd>5</kbd>
             </Button>
           </ControlTooltip>
         </div>
@@ -1623,65 +1726,29 @@ export function Result({
                       />
                     </div>
                   </div>
-                  <Tooltip disabled={!hasManualEdits}>
-                    <TooltipTrigger
-                      delay={0}
-                      render={(
-                        <label
-                          className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!"
-                          tabIndex={hasManualEdits ? 0 : undefined}
-                        >
-                          <span>
-                            格数
-                            <output>
-                              {draftSettings.longestEdge}
-                              {" "}
-                              格
-                            </output>
-                          </span>
-                          <input
-                            type="range"
-                            min="16"
-                            max="192"
-                            disabled={hasManualEdits}
-                            value={draftSettings.longestEdge}
-                            onChange={event =>
-                              scheduleAdjustments({
-                                ...draftSettingsRef.current,
-                                longestEdge: Number(event.target.value),
-                              })}
-                          />
-                        </label>
-                      )}
-                    />
-                    <TooltipContent
-                      className="pointer-events-none"
-                      side="top"
-                    >
-                      {MANUAL_EDIT_SIZE_NOTICE}
-                    </TooltipContent>
-                  </Tooltip>
-                  <label className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!">
-                    <span>
-                      颜色上限
-                      <output>
-                        {draftSettings.maxColors}
-                        {" "}
-                        色
-                      </output>
-                    </span>
-                    <input
-                      type="range"
-                      min="1"
-                      max="291"
-                      value={draftSettings.maxColors}
-                      onChange={event =>
-                        scheduleAdjustments({
-                          ...draftSettingsRef.current,
-                          maxColors: Number(event.target.value),
-                        })}
-                    />
-                  </label>
+                  <PresetNumberControl
+                    key={`${draftSettings.longestEdge}-${pendingLongestEdge ?? "idle"}`}
+                    label="格数"
+                    min={16}
+                    max={192}
+                    suffix="格"
+                    presets={[29, 52, 78, 104]}
+                    value={draftSettings.longestEdge}
+                    onChange={requestLongestEdge}
+                  />
+                  <PresetNumberControl
+                    label="颜色上限"
+                    min={1}
+                    max={291}
+                    suffix="色"
+                    presets={[8, 12, 16, 20]}
+                    value={draftSettings.maxColors}
+                    onChange={maxColors =>
+                      scheduleAdjustments({
+                        ...draftSettingsRef.current,
+                        maxColors,
+                      })}
+                  />
                   <label className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!">
                     <span>
                       颜色合并程度
@@ -1935,6 +2002,29 @@ export function Result({
           </aside>
         </>
       )}
+
+      <AlertDialog
+        open={pendingLongestEdge !== null}
+        onOpenChange={open => !open && setPendingLongestEdge(null)}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>修改格数并重排图纸？</AlertDialogTitle>
+            <AlertDialogDescription>
+              更改格数会按新尺寸重排图纸，当前手工编辑不会保留。是否继续？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={confirmLongestEdge}
+            >
+              继续修改
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={deleteOpen}

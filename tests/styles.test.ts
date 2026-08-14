@@ -120,6 +120,21 @@ describe("统一图纸工作台", () => {
     expect(prepare).toContain("mb-3.5 flex min-h-[58px]");
   });
 
+  it("格数和颜色使用常用值按钮，也可直接填写", () => {
+    expect(result).toContain("presets={[29, 52, 78, 104]}");
+    expect(result).toContain("presets={[8, 12, 16, 20]}");
+    expect(result).toContain("aria-label={`自定义${label}`}");
+    expect(result).toContain("setCustomizing(true)");
+    expect(result).toContain("自定义");
+    expect(result).toContain("type=\"number\"");
+    expect(result).toContain("修改格数并重排图纸？");
+    expect(result).toContain("当前手工编辑不会保留");
+    expect(result).toContain("applyAdjustments(next, true)");
+    expect(result).not.toContain("disabled={hasManualEdits}");
+    expect(result).not.toMatch(/type="range"[\s\S]{0,160}longestEdge/);
+    expect(result).not.toMatch(/type="range"[\s\S]{0,160}maxColors/);
+  });
+
   it("三个 AI 服务都在设置弹窗中，密钥不挤占主界面", () => {
     expect(aiSettings).toContain("Cloudflare AI");
     expect(aiSettings).toContain("Gemini API Key");
@@ -211,13 +226,16 @@ describe("统一图纸工作台", () => {
     expect(result).toContain("className=\"workbench-actions ");
     expect(result).toContain("className=\"workbench-lower-left ");
     expect(result).toContain("className=\"workbench-lower-right ");
-    expect(result).toContain("锁定");
+    expect(result).not.toContain("锁定编辑");
     expect(result).toContain("抓手");
     expect(result).toContain("画笔");
     expect(result).toContain("整色替换");
     expect(result).not.toContain("更多工具");
     expect(result).toContain("<kbd>1</kbd>");
     expect(result).toContain("<kbd>{shortcut}</kbd>");
+    expect(result).toContain("1: \"hand\"");
+    expect(result).toContain("2: \"brush\"");
+    expect(result).toContain("5: \"replace\"");
     expect(result).not.toContain("背景恢复");
     expect(patternPreview).toContain("图纸预览");
     expect(patternPreview).toContain("复制图片");
