@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Pattern } from "@/lib/types";
 import { beadById } from "@/lib/beads";
-import { drawPatternGrid } from "@/lib/pattern";
+import { drawPatternGrid, patternGridMarks } from "@/lib/pattern";
 
 type Props = {
   pattern: Pattern;
@@ -20,6 +20,32 @@ type Props = {
   highlightIndex?: number | null;
   showCellTooltip?: boolean;
 };
+
+type AxisProps = {
+  side: "top" | "right" | "bottom" | "left";
+  size: number;
+};
+
+export function PatternGridAxis({ side, size }: AxisProps) {
+  const horizontal = side === "top" || side === "bottom";
+  return (
+    <div
+      className={`pattern-grid-axis is-${side}`}
+      aria-hidden="true"
+    >
+      {patternGridMarks(size).map(mark => (
+        <span
+          key={mark}
+          style={horizontal
+            ? { left: `${((mark - 0.5) / size) * 100}%` }
+            : { top: `${((mark - 0.5) / size) * 100}%` }}
+        >
+          {mark}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export function PatternCanvas({
   pattern,

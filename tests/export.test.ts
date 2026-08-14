@@ -6,6 +6,7 @@ import {
   copyPatternPng,
   cropAreaPixels,
   downloadPatternPng,
+  patternGridMarks,
   renderPattern,
   sharePatternPng,
 } from "../lib/pattern";
@@ -14,6 +15,12 @@ describe("图纸 PNG 导出", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it("画布标出首格、每十格和末格", () => {
+    expect(patternGridMarks(1)).toEqual([1]);
+    expect(patternGridMarks(31)).toEqual([1, 10, 20, 30, 31]);
+    expect(patternGridMarks(104)).toEqual([1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 104]);
   });
 
   it("施工图可附带颜色用量", () => {

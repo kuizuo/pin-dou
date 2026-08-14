@@ -49,7 +49,10 @@ import type {
   Project,
   ProjectVersion,
 } from "@/lib/types";
-import { PatternCanvas } from "@/components/pattern-canvas";
+import {
+  PatternCanvas,
+  PatternGridAxis,
+} from "@/components/pattern-canvas";
 import { PatternPreviewDialog } from "@/components/pattern-preview-dialog";
 import {
   AlertDialog,
@@ -1334,22 +1337,41 @@ export function Result({
             <div
               ref={fitTarget}
               className="workbench-board max-[641px]:w-[min(84vmin,760px)]!"
-              style={{ aspectRatio: `${pattern.width} / ${pattern.height}` }}
             >
-              <PatternCanvas
-                pattern={pattern}
-                showGrid={grid}
-                showCodes={codes}
-                shape={shape}
-                editable={isEditing && !spacePanning && !busy}
-                continuous={["brush", "eraser"].includes(tool)}
-                highlightIndex={replaceSource?.index}
-                showCellTooltip={isEditing && !spacePanning && !busy}
-                onStrokeStart={beginStroke}
-                onPaint={editCell}
-                onStrokeEnd={() => void endStroke()}
-                onStrokeCancel={cancelStroke}
-              />
+              <div className="workbench-board-frame">
+                <PatternGridAxis
+                  side="top"
+                  size={pattern.width}
+                />
+                <PatternGridAxis
+                  side="left"
+                  size={pattern.height}
+                />
+                <div className="pattern-grid-surface">
+                  <PatternCanvas
+                    pattern={pattern}
+                    showGrid={grid}
+                    showCodes={codes}
+                    shape={shape}
+                    editable={isEditing && !spacePanning && !busy}
+                    continuous={["brush", "eraser"].includes(tool)}
+                    highlightIndex={replaceSource?.index}
+                    showCellTooltip={isEditing && !spacePanning && !busy}
+                    onStrokeStart={beginStroke}
+                    onPaint={editCell}
+                    onStrokeEnd={() => void endStroke()}
+                    onStrokeCancel={cancelStroke}
+                  />
+                </div>
+                <PatternGridAxis
+                  side="right"
+                  size={pattern.height}
+                />
+                <PatternGridAxis
+                  side="bottom"
+                  size={pattern.width}
+                />
+              </div>
             </div>
           </TransformComponent>
         </TransformWrapper>
@@ -1735,7 +1757,7 @@ export function Result({
                   </div>
                   <PresetNumberControl
                     key={`${draftSettings.longestEdge}-${pendingLongestEdge ?? "idle"}`}
-                    label="格数"
+                    label="豆板格数"
                     min={16}
                     max={192}
                     suffix="格"

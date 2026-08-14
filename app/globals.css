@@ -205,10 +205,64 @@ svg {
   position: relative;
   width: min(78vmin, 920px);
   border: 1px solid #d8cfd2;
+  border-radius: 20px;
   background: #fffdfb;
+  padding: 16px;
   box-shadow:
     0 22px 52px rgb(68 41 53 / 0.17),
     0 3px 10px rgb(68 41 53 / 0.08);
+}
+.workbench-board-frame {
+  --axis-size: 20px;
+  display: grid;
+  grid-template:
+    ". top ." var(--axis-size)
+    "left canvas right" auto
+    ". bottom ." var(--axis-size)
+    / var(--axis-size) minmax(0, 1fr) var(--axis-size);
+  gap: 4px;
+}
+.pattern-grid-surface {
+  position: relative;
+  grid-area: canvas;
+  overflow: visible;
+}
+.pattern-grid-axis {
+  position: relative;
+  color: #677083;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  pointer-events: none;
+}
+.pattern-grid-axis.is-top {
+  grid-area: top;
+}
+.pattern-grid-axis.is-right {
+  grid-area: right;
+}
+.pattern-grid-axis.is-bottom {
+  grid-area: bottom;
+}
+.pattern-grid-axis.is-left {
+  grid-area: left;
+}
+.pattern-grid-axis span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+.pattern-grid-axis.is-top span {
+  top: 60%;
+}
+.pattern-grid-axis.is-bottom span {
+  top: 40%;
+}
+.pattern-grid-axis.is-left span {
+  left: 60%;
+}
+.pattern-grid-axis.is-right span {
+  left: 40%;
 }
 .workbench-board canvas {
   display: block;

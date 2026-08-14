@@ -130,6 +130,8 @@ describe("统一图纸工作台", () => {
   });
 
   it("格数和颜色使用常用值按钮，也可直接填写", () => {
+    expect(result).toContain("label=\"豆板格数\"");
+    expect(result).not.toContain("label=\"格数\"");
     expect(result).toContain("presets={[29, 52, 78, 104]}");
     expect(result).toContain("presets={[8, 12, 16, 20]}");
     expect(result).toContain("aria-label={`自定义${label}`}");

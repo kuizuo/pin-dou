@@ -15,6 +15,7 @@ import {
   mardPalette,
   mirrorCells,
   PALETTE_SIZES,
+  patternLayout,
   samplePixelTiles,
   validateImageFile,
 } from "../lib/pattern";
@@ -154,6 +155,25 @@ describe("MARD 图纸核心处理", () => {
       "B2",
       "B1",
     ]);
+  });
+
+  it("格数固定为正方形豆板边长并把图案居中", () => {
+    expect(patternLayout(200, 100, 29)).toEqual({
+      width: 29,
+      height: 29,
+      contentWidth: 29,
+      contentHeight: 15,
+      x: 0,
+      y: 7,
+    });
+    expect(patternLayout(100, 200, 29)).toEqual({
+      width: 29,
+      height: 29,
+      contentWidth: 15,
+      contentHeight: 29,
+      x: 7,
+      y: 0,
+    });
   });
 
   it("排除色号后使用近似色替代", () => {

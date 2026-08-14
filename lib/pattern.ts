@@ -599,6 +599,25 @@ export function mirrorCells(cells: Array<string | null>, width: number) {
   return mirrored;
 }
 
+export function patternLayout(
+  sourceWidth: number,
+  sourceHeight: number,
+  requestedSize: number,
+) {
+  const size = Math.max(16, Math.min(192, Math.round(requestedSize)));
+  const sourceMax = Math.max(sourceWidth, sourceHeight);
+  const contentWidth = Math.max(1, Math.round((sourceWidth / sourceMax) * size)),
+    contentHeight = Math.max(1, Math.round((sourceHeight / sourceMax) * size));
+  return {
+    width: size,
+    height: size,
+    contentWidth,
+    contentHeight,
+    x: Math.floor((size - contentWidth) / 2),
+    y: Math.floor((size - contentHeight) / 2),
+  };
+}
+
 export async function imageToPattern(
   dataUrl: string,
   fileName: string,
@@ -608,13 +627,11 @@ export async function imageToPattern(
 ) {
   const image = await loadImage(dataUrl);
   const source = transformedCanvas(image, transform);
-  const longestEdge = Math.max(
-    16,
-    Math.min(192, Math.round(settings.longestEdge)),
+  const { width, height, contentWidth, contentHeight, x, y } = patternLayout(
+    source.width,
+    source.height,
+    settings.longestEdge,
   );
-  const ratio = longestEdge / Math.max(source.width, source.height);
-  const contentWidth = Math.max(1, Math.round(source.width * ratio)),
-    contentHeight = Math.max(1, Math.round(source.height * ratio));
   const availableColors = mardPalette(
     settings.paletteSize,
     settings.excludedColorIds,
@@ -628,10 +645,6 @@ export async function imageToPattern(
     availableColors,
     settings.colorMerge,
   );
-  const width = contentWidth,
-    height = contentHeight,
-    x = 0,
-    y = 0;
   let cells: Array<string | null> = Array(width * height).fill(null);
   for (let row = 0; row < contentHeight; row += 1)
     cells.splice(
@@ -732,6 +745,13 @@ export function drawPatternGrid(
   context.strokeStyle = "#667085";
   context.lineWidth = 2;
   context.stroke();
+}
+
+export function patternGridMarks(size: number) {
+  const marks = [1];
+  for (let mark = 10; mark < size; mark += 10) marks.push(mark);
+  if (size > 1) marks.push(size);
+  return marks;
 }
 
 export function renderPattern(pattern: Pattern, includeLegend = true) {
