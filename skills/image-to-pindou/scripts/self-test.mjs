@@ -16,9 +16,9 @@ try {
   assert.equal(result.width, 16); assert.ok(result.colors <= 6); assert.ok(result.beads > 0 && result.beads < 16 * 12);
   for (const file of ["sampled-preview.png", "pixel-preview.png", "pattern.png", "pattern.svg", "bom.csv", "result.pindou.json"]) await readFile(path.join(output, file));
   await assert.rejects(readFile(path.join(output, "grid.json"))); await assert.rejects(readFile(path.join(output, "config.json")));
-  const backup = JSON.parse(await readFile(result.projectFile)), project = backup.projects[0], snapshot = project.snapshots[0], packed = Buffer.from(snapshot.c.d, "base64");
+  const backup = JSON.parse(await readFile(result.projectFile)), project = backup.projects[0], snapshot = project.pattern.snapshot, packed = Buffer.from(snapshot.c.d, "base64");
   const bomTotal = (await readFile(path.join(output, "bom.csv"), "utf8")).trim().split("\n").slice(1).reduce((sum, line) => sum + Number(line.split(",")[2]), 0);
-  assert.equal(backup.schemaVersion, 3); assert.equal(project.name, "result"); assert.equal(snapshot.w, result.width); assert.equal(snapshot.h, result.height); assert.equal(packed.filter(Boolean).length, bomTotal); assert.equal(project.versions[0].reason, "首次生成"); assert.match(backup.sources[0], /^data:image\/png;base64,/);
+  assert.equal(backup.schemaVersion, 4); assert.equal(project.name, "result"); assert.equal(snapshot.w, result.width); assert.equal(snapshot.h, result.height); assert.equal(packed.filter(Boolean).length, bomTotal); assert.equal(project.versions, undefined); assert.match(backup.sources[0], /^data:image\/png;base64,/);
   const ambiguous = path.join(directory, "ambiguous.svg");
   await writeFile(ambiguous, `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="50" height="100" fill="white"/><rect x="50" width="50" height="100" fill="#aaa"/></svg>`);
   await assert.rejects(run([ambiguous, "--size", "16", "--background", "remove", "--out", path.join(directory, "ambiguous")]), /outer background is ambiguous/);

@@ -346,11 +346,11 @@ describe("统一图纸工作台", () => {
     expect(result).toContain("<PanelBottomClose className=\"min-[642px]:hidden!\" />");
     expect(result).toContain("<PanelRightOpen className=\"max-[641px]:hidden!\" />");
     expect(result).toContain("<PanelRightClose className=\"max-[641px]:hidden!\" />");
-    expect(result).toContain("{ id: \"adjust\", label: \"设置\" }");
+    expect(result).toContain("<strong>设置</strong>");
     expect(result).not.toContain("{ id: \"colors\", label: \"颜色\" }");
-    expect(result).toContain("{ id: \"versions\", label: \"版本\" }");
+    expect(result).not.toContain("{ id: \"versions\", label: \"版本\" }");
     expect(result).toContain("className=\"workbench-panel ");
-    expect(result).toContain("role=\"tablist\"");
+    expect(result).not.toContain("role=\"tablist\"");
     expect(result).toContain("onDoubleClick={() => addQuickColor(color.id)}");
     expect(result).toContain("<small>双击添加颜色</small>");
     expect(normalizedCss).toContain(

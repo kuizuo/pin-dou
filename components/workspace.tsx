@@ -40,12 +40,7 @@ import {
   renderGenerationSource,
   validateImageFile,
 } from "@/lib/pattern";
-import {
-  addVersion,
-  deleteProject,
-  listProjects,
-  saveProject,
-} from "@/lib/projects";
+import { deleteProject, listProjects, saveProject } from "@/lib/projects";
 import {
   DEFAULT_SETTINGS,
   DEFAULT_TRANSFORM,
@@ -355,30 +350,24 @@ export function Workspace({
       );
       const now = new Date().toISOString();
       const removed = settings.background !== "keep";
-      const project = addVersion(
-        {
-          backgroundRemoved: removed,
-          createdAt: now,
-          generatedSource,
-          id: crypto.randomUUID(),
-          name: pattern.name,
-          pattern,
-          processedSource: removed
-            ? await fetch(processed).then(response => response.blob())
-            : undefined,
-          settings,
-          source: draft.file,
-          sourceName: draft.file.name,
-          sourceType: draft.file.type,
-          sourceVariant,
-          transform: draft.transform,
-          updatedAt: now,
-          versions: [],
-        },
+      const project = {
+        backgroundRemoved: removed,
+        createdAt: now,
+        generatedSource,
+        id: crypto.randomUUID(),
+        name: pattern.name,
         pattern,
-        "auto",
-        "首次生成",
-      );
+        processedSource: removed
+          ? await fetch(processed).then(response => response.blob())
+          : undefined,
+        settings,
+        source: draft.file,
+        sourceName: draft.file.name,
+        sourceType: draft.file.type,
+        sourceVariant,
+        transform: draft.transform,
+        updatedAt: now,
+      } satisfies Project;
 
       await saveProject(project);
       setCurrent(project);

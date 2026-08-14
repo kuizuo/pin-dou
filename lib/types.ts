@@ -51,22 +51,6 @@ export type Pattern = {
 
 export type PatternStats = Array<{ color: BeadColor; count: number }>;
 
-export type ProjectVersion = {
-  id: string;
-  name: string;
-  kind: "auto" | "manual";
-  createdAt: string;
-  reason:
-    | "首次生成"
-    | "重新生成"
-    | "参数调整"
-    | "整色替换"
-    | "自动备份"
-    | "恢复版本"
-    | "手动保存";
-  pattern: Pattern;
-};
-
 export type Project = {
   id: string;
   name: string;
@@ -82,7 +66,6 @@ export type Project = {
   transform: SourceTransform;
   settings: GenerationSettings;
   pattern: Pattern;
-  versions: ProjectVersion[];
 };
 
 export type AiVariant = "pixel";

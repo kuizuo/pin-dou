@@ -1,11 +1,18 @@
 import { z } from "zod";
-import type { Pattern, Project, ProjectVersion } from "./types";
+import type { Pattern, Project } from "./types";
 import { readBlobAsDataUrl, saveBlob } from "./pattern";
 import { DEFAULT_SETTINGS } from "./types";
 
 const DB_NAME = "pindou-projects-v3";
 const STORE = "projects";
-const AUTO_VERSION_INTERVAL = 5 * 60 * 1000;
+
+type LegacyProject = Project & { versions?: unknown };
+
+function currentProject(value: LegacyProject): Project {
+  const project = { ...value };
+  delete project.versions;
+  return project;
+}
 
 function requestValue<T>(request: IDBRequest<T>) {
   return new Promise<T>((resolve, reject) => {
@@ -16,9 +23,23 @@ function requestValue<T>(request: IDBRequest<T>) {
 
 function openDatabase() {
   return new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
-    request.onupgradeneeded = () =>
-      request.result.createObjectStore(STORE, { keyPath: "id" });
+    const request = indexedDB.open(DB_NAME, 2);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(STORE)) {
+        request.result.createObjectStore(STORE, { keyPath: "id" });
+        return;
+      }
+      const store = request.transaction?.objectStore(STORE),
+        cursorRequest = store?.openCursor();
+      if (!cursorRequest) return;
+      cursorRequest.onsuccess = () => {
+        const cursor = cursorRequest.result;
+        if (!cursor) return;
+        if ("versions" in cursor.value)
+          cursor.update(currentProject(cursor.value as LegacyProject));
+        cursor.continue();
+      };
+    };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
@@ -43,7 +64,8 @@ export async function listProjects() {
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
-export function normalizeProject(project: Project): Project {
+export function normalizeProject(value: LegacyProject): Project {
+  const project = currentProject(value);
   const legacyBackground = project.settings.background as string;
   const background
     = legacyBackground === "keep"
@@ -126,81 +148,6 @@ export async function deleteProjects(ids: string[]) {
   database.close();
 }
 
-export function addVersion(
-  project: Project,
-  pattern: Pattern,
-  kind: ProjectVersion["kind"],
-  reason: ProjectVersion["reason"],
-  name: string = reason,
-) {
-  const version: ProjectVersion = {
-    id: crypto.randomUUID(),
-    name,
-    kind,
-    reason,
-    createdAt: new Date().toISOString(),
-    pattern: structuredClone(pattern),
-  };
-  const versions = [...project.versions, version];
-  const automatic = versions.filter(item => item.kind === "auto");
-  const keepAutomatic = new Set(automatic.slice(-20).map(item => item.id));
-  return {
-    ...project,
-    name: pattern.name,
-    pattern,
-    updatedAt: version.createdAt,
-    versions: versions.filter(
-      item => item.kind === "manual" || keepAutomatic.has(item.id),
-    ),
-  };
-}
-
-export function samePatternContent(left: Pattern, right: Pattern) {
-  return left.width === right.width
-    && left.height === right.height
-    && JSON.stringify(left.contentBounds) === JSON.stringify(right.contentBounds)
-    && left.cells.length === right.cells.length
-    && left.cells.every((cell, index) => cell === right.cells[index])
-    && left.backgroundCells?.length === right.backgroundCells?.length
-    && (left.backgroundCells?.every(
-      (cell, index) => cell === right.backgroundCells?.[index],
-    ) ?? true);
-}
-
-export function addPeriodicVersion(project: Project, pattern: Pattern) {
-  const latest = project.versions.at(-1),
-    lastBackupAt = new Date(latest?.createdAt ?? project.createdAt).getTime();
-  if (
-    samePatternContent(project.pattern, pattern)
-    || (latest && samePatternContent(latest.pattern, pattern))
-    || Date.now() - lastBackupAt < AUTO_VERSION_INTERVAL
-  )
-    return project;
-  return addVersion(project, pattern, "auto", "自动备份");
-}
-
-export function restoreVersion(project: Project, version: ProjectVersion) {
-  if (samePatternContent(project.pattern, version.pattern)) return project;
-  const backup = addVersion(
-    project,
-    project.pattern,
-    "auto",
-    "恢复版本",
-    "恢复前备份",
-  );
-  const pattern = {
-    ...structuredClone(version.pattern),
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-  };
-  return {
-    ...backup,
-    name: pattern.name,
-    pattern,
-    updatedAt: pattern.createdAt,
-  };
-}
-
 export function duplicateProject(project: Project) {
   const now = new Date().toISOString();
   return {
@@ -218,49 +165,6 @@ export function duplicateProject(project: Project) {
   } satisfies Project;
 }
 
-const CellSchema = z.string().nullable();
-const PatternSchema = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    width: z.number().int().min(1).max(192),
-    height: z.number().int().min(1).max(192),
-    cells: z.array(CellSchema),
-    backgroundCells: z.array(CellSchema).optional(),
-    createdAt: z.string(),
-    sourcePreview: z.string().optional(),
-    contentBounds: z
-      .object({
-        x: z.number(),
-        y: z.number(),
-        width: z.number(),
-        height: z.number(),
-      })
-      .optional(),
-  })
-  .refine(
-    pattern =>
-      pattern.cells.length === pattern.width * pattern.height
-      && (!pattern.backgroundCells
-        || pattern.backgroundCells.length === pattern.cells.length),
-    "图纸格数不完整",
-  );
-const VersionSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  kind: z.enum(["auto", "manual"]),
-  createdAt: z.string(),
-  reason: z.enum([
-    "首次生成",
-    "重新生成",
-    "参数调整",
-    "整色替换",
-    "自动备份",
-    "恢复版本",
-    "手动保存",
-  ]),
-  pattern: PatternSchema,
-});
 const SettingsSchema = z.object({
   longestEdge: z.number().min(16).max(192),
   maxColors: z.number().min(1).max(291),
@@ -272,47 +176,26 @@ const SettingsSchema = z.object({
   mirror: z.boolean().optional(),
   mode: z.enum(["local", "ai"]),
 });
-const LegacyBackupProjectSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-  source: z.string().startsWith("data:"),
-  sourceName: z.string(),
-  sourceType: z.string(),
-  generatedSource: z.string().startsWith("data:").optional(),
-  sourceVariant: z.enum(["original", "ai-pixel", "ai-cartoon", "ai-realistic"]),
-  processedSource: z.string().startsWith("data:").optional(),
-  backgroundRemoved: z.boolean().optional(),
-  transform: z.object({
-    rotation: z.union([
-      z.literal(0),
-      z.literal(90),
-      z.literal(180),
-      z.literal(270),
-    ]),
-    flipX: z.boolean(),
-    flipY: z.boolean(),
-    zoom: z.number().min(1).max(3),
-    offsetX: z.number().min(-1).max(1),
-    offsetY: z.number().min(-1).max(1),
-    crop: z
-      .object({
-        x: z.number().min(0).max(100),
-        y: z.number().min(0).max(100),
-        width: z.number().positive().max(100),
-        height: z.number().positive().max(100),
-      })
-      .optional(),
-  }),
-  settings: SettingsSchema,
-  pattern: PatternSchema,
-  versions: z.array(VersionSchema),
-});
-const LegacyBackupSchema = z.object({
-  schemaVersion: z.literal(2),
-  exportedAt: z.string(),
-  projects: z.array(LegacyBackupProjectSchema),
+const TransformSchema = z.object({
+  rotation: z.union([
+    z.literal(0),
+    z.literal(90),
+    z.literal(180),
+    z.literal(270),
+  ]),
+  flipX: z.boolean(),
+  flipY: z.boolean(),
+  zoom: z.number().min(1).max(3),
+  offsetX: z.number().min(-1).max(1),
+  offsetY: z.number().min(-1).max(1),
+  crop: z
+    .object({
+      x: z.number().min(0).max(100),
+      y: z.number().min(0).max(100),
+      width: z.number().positive().max(100),
+      height: z.number().positive().max(100),
+    })
+    .optional(),
 });
 
 const PackedCellsSchema = z.object({
@@ -338,16 +221,7 @@ const CompactPatternSchema = z.object({
   id: z.string(),
   name: z.string(),
   createdAt: z.string(),
-  snapshot: z.number().int().nonnegative(),
-});
-const CompactVersionSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  kind: z.enum(["auto", "manual"]),
-  reason: VersionSchema.shape.reason,
-  createdAt: z.string(),
-  patternName: z.string(),
-  snapshot: z.number().int().nonnegative(),
+  snapshot: CompactSnapshotSchema,
 });
 const CompactBackupProjectSchema = z.object({
   id: z.string(),
@@ -356,14 +230,12 @@ const CompactBackupProjectSchema = z.object({
   updatedAt: z.string(),
   sourceName: z.string(),
   source: z.number().int().nonnegative(),
-  transform: LegacyBackupProjectSchema.shape.transform,
+  transform: TransformSchema,
   settings: SettingsSchema,
   pattern: CompactPatternSchema,
-  snapshots: z.array(CompactSnapshotSchema).min(1).max(11),
-  versions: z.array(CompactVersionSchema).max(10),
 });
 const CompactBackupSchema = z.object({
-  schemaVersion: z.literal(3),
+  schemaVersion: z.literal(4),
   exportedAt: z.string(),
   sources: z.array(z.string().startsWith("data:")),
   projects: z.array(CompactBackupProjectSchema),
@@ -448,30 +320,6 @@ function expandSnapshot(
 }
 
 function compactProject(project: Project, source: number) {
-  const snapshots: CompactSnapshot[] = [],
-    snapshotIndexes = new Map<string, number>();
-  const addSnapshot = (pattern: Pattern) => {
-    const snapshot = compactSnapshot(pattern),
-      key = JSON.stringify(snapshot),
-      existing = snapshotIndexes.get(key);
-    if (existing !== undefined) return existing;
-    const index = snapshots.length;
-    snapshots.push(snapshot);
-    snapshotIndexes.set(key, index);
-    return index;
-  };
-  const versions = [...project.versions]
-    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-    .slice(-10)
-    .map(version => ({
-      id: version.id,
-      name: version.name,
-      kind: version.kind,
-      reason: version.reason,
-      createdAt: version.createdAt,
-      patternName: version.pattern.name,
-      snapshot: addSnapshot(version.pattern),
-    }));
   return {
     id: project.id,
     name: project.name,
@@ -485,10 +333,8 @@ function compactProject(project: Project, source: number) {
       id: project.pattern.id,
       name: project.pattern.name,
       createdAt: project.pattern.createdAt,
-      snapshot: addSnapshot(project.pattern),
+      snapshot: compactSnapshot(project.pattern),
     },
-    snapshots,
-    versions,
   };
 }
 
@@ -518,7 +364,7 @@ export async function createBackupBlob(projects: Project[]) {
   return new Blob(
     [
       JSON.stringify({
-        schemaVersion: 3,
+        schemaVersion: 4,
         exportedAt: new Date().toISOString(),
         sources,
         projects: compactProjects,
@@ -543,29 +389,12 @@ export async function readBackupProjects(file: File) {
   catch {
     throw new Error("备份文件无法读取，现有作品没有改变。");
   }
-  const legacy = LegacyBackupSchema.safeParse(parsed);
-  if (legacy.success)
-    return legacy.data.projects.map(project => normalizeProject({
-      ...project,
-      source: dataUrlToBlob(project.source),
-      generatedSource: project.generatedSource
-        ? dataUrlToBlob(project.generatedSource)
-        : undefined,
-      processedSource: project.processedSource
-        ? dataUrlToBlob(project.processedSource)
-        : undefined,
-    } as Project));
   const compact = CompactBackupSchema.safeParse(parsed);
   if (!compact.success)
     throw new Error("备份内容不完整或版本不支持，现有作品没有改变。");
   try {
     return compact.data.projects.map((project) => {
-      const snapshot = (index: number) => {
-          const value = project.snapshots[index];
-          if (!value) throw new Error("Invalid snapshot reference");
-          return value;
-        },
-        source = compact.data.sources[project.source];
+      const source = compact.data.sources[project.source];
       if (!source) throw new Error("Invalid source reference");
       const sourceBlob = dataUrlToBlob(source);
       return normalizeProject({
@@ -584,19 +413,7 @@ export async function readBackupProjects(file: File) {
           background: project.settings.background === "keep" ? "keep" : "plain",
           mode: "local",
         },
-        pattern: expandSnapshot(snapshot(project.pattern.snapshot), project.pattern),
-        versions: project.versions.map(version => ({
-          id: version.id,
-          name: version.name,
-          kind: version.kind,
-          reason: version.reason,
-          createdAt: version.createdAt,
-          pattern: expandSnapshot(snapshot(version.snapshot), {
-            id: version.id,
-            name: version.patternName,
-            createdAt: version.createdAt,
-          }),
-        })),
+        pattern: expandSnapshot(project.pattern.snapshot, project.pattern),
       });
     });
   }

@@ -46,7 +46,6 @@ import type {
   GenerationSettings,
   Pattern,
   Project,
-  ProjectVersion,
 } from "@/lib/types";
 import {
   PatternCanvas,
@@ -88,13 +87,7 @@ import {
   renderPattern,
   sharePatternPng,
 } from "@/lib/pattern";
-import {
-  addPeriodicVersion,
-  addVersion,
-  restoreVersion,
-  samePatternContent,
-  saveProject,
-} from "@/lib/projects";
+import { saveProject } from "@/lib/projects";
 import { DEFAULT_TRANSFORM } from "@/lib/types";
 
 type WorkbenchTool
@@ -103,7 +96,6 @@ type WorkbenchTool
     | "eraser"
     | "fill"
     | "replace";
-type PanelTab = "adjust" | "versions";
 type NoticeTone = "success" | "warning";
 type HistoryEntry = Pick<
   Project,
@@ -576,8 +568,7 @@ export function Result({
     [shape, setShape] = useState<"square" | "circle">("square");
   const [scale, setScale] = useState(1),
     [spacePanning, setSpacePanning] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(true),
-    [panelTab, setPanelTab] = useState<PanelTab>("adjust");
+  const [panelOpen, setPanelOpen] = useState(true);
   const [draftSettings, setDraftSettings] = useState<GenerationSettings>({
     ...project.settings,
     excludedColorIds: [...project.settings.excludedColorIds],
@@ -591,7 +582,6 @@ export function Result({
   } | null>(null);
   const [saving, setSaving] = useState(false),
     [adjusting, setAdjusting] = useState(false);
-  const [versionName, setVersionName] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false),
     [pendingLongestEdge, setPendingLongestEdge] = useState<number | null>(null),
     [deleting, setDeleting] = useState(false),
@@ -778,7 +768,7 @@ export function Result({
     setSaving(true);
     setNotice("正在保存…");
     const next = {
-      ...addPeriodicVersion(projectRef.current, after),
+      ...projectRef.current,
       pattern: after,
       updatedAt: new Date().toISOString(),
     };
@@ -822,7 +812,7 @@ export function Result({
     setNotice("正在保存整色替换…");
     const nextPattern = { ...before, cells: result.cells };
     const next = {
-      ...addPeriodicVersion(projectRef.current, nextPattern),
+      ...projectRef.current,
       pattern: nextPattern,
       updatedAt: new Date().toISOString(),
     };
@@ -867,7 +857,7 @@ export function Result({
     if (!previous || busy) return;
     setSaving(true);
     const next = {
-      ...addPeriodicVersion(projectRef.current, previous.pattern),
+      ...projectRef.current,
       ...previous,
       updatedAt: new Date().toISOString(),
     };
@@ -896,7 +886,7 @@ export function Result({
     if (!nextEntry || busy) return;
     setSaving(true);
     const next = {
-      ...addPeriodicVersion(projectRef.current, nextEntry.pattern),
+      ...projectRef.current,
       ...nextEntry,
       updatedAt: new Date().toISOString(),
     };
@@ -986,7 +976,7 @@ export function Result({
           }
         : generatedPattern;
       const next = {
-        ...addPeriodicVersion(current, nextPattern),
+        ...current,
         name: nextPattern.name,
         pattern: nextPattern,
         settings,
@@ -1089,32 +1079,6 @@ export function Result({
     }
   }
 
-  async function saveManualVersion() {
-    const name = versionName.trim();
-    if (!name || busy) return;
-    setSaving(true);
-    const next = addVersion(
-      { ...projectRef.current, pattern: patternRef.current },
-      patternRef.current,
-      "manual",
-      "手动保存",
-      name,
-    );
-    try {
-      await saveProject(next);
-      projectRef.current = next;
-      onChange(next);
-      setVersionName("");
-      setNotice(`已保存版本“${name}”`);
-    }
-    catch (error) {
-      setNotice(error instanceof Error ? error.message : "版本保存失败。");
-    }
-    finally {
-      setSaving(false);
-    }
-  }
-
   async function openComparison() {
     try {
       const source = projectRef.current.generatedSource;
@@ -1132,41 +1096,6 @@ export function Result({
       setNotice(
         error instanceof Error ? error.message : "原图对比无法打开。",
       );
-    }
-  }
-
-  async function restore(version: ProjectVersion) {
-    if (busy) return;
-    if (samePatternContent(patternRef.current, version.pattern)) {
-      setNotice(`当前已经是“${version.name}”`);
-      return;
-    }
-    setSaving(true);
-    setNotice(`正在恢复“${version.name}”…`);
-    const next = restoreVersion(
-      { ...projectRef.current, pattern: patternRef.current },
-      version,
-    );
-    try {
-      await saveProject(next);
-      projectRef.current = next;
-      updatePattern(next.pattern);
-      onChange(next);
-      setHistory([]);
-      setFuture([]);
-      setReplaceSource(null);
-      setTool("hand");
-      setNotice(`已恢复“${version.name}”，当前图纸已备份`);
-    }
-    catch (error) {
-      setNotice(
-        error instanceof Error
-          ? error.message
-          : "版本恢复失败，当前图纸已保留。",
-      );
-    }
-    finally {
-      setSaving(false);
     }
   }
 
@@ -1641,28 +1570,7 @@ export function Result({
             aria-label="图纸设置"
           >
             <header className="workbench-panel-header max-[641px]:min-h-12! max-[641px]:py-0.5!">
-              <div
-                role="tablist"
-                aria-label="设置分类"
-              >
-                {(
-                  [
-                    { id: "adjust", label: "设置" },
-                    { id: "versions", label: "版本" },
-                  ] as const
-                ).map(tab => (
-                  <button
-                    type="button"
-                    role="tab"
-                    key={tab.id}
-                    aria-selected={panelTab === tab.id}
-                    className={panelTab === tab.id ? "active" : ""}
-                    onClick={() => setPanelTab(tab.id)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
+              <strong>设置</strong>
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -1673,276 +1581,201 @@ export function Result({
               </Button>
             </header>
             <div className="workbench-panel-scroll">
-              {panelTab === "adjust" && (
-                <section
-                  className="panel-section max-[641px]:gap-[11px]! max-[641px]:px-3! max-[641px]:pt-2.5! max-[641px]:pb-[calc(14px+env(safe-area-inset-bottom))]!"
-                  aria-label="调整图纸"
-                >
-                  <div className="panel-size-row">
-                    <strong>实际图案尺寸</strong>
-                    <output>{physicalSize ? `约 ${physicalSize}` : "暂无图案内容"}</output>
-                  </div>
-                  <div className="panel-switches">
-                    <div className="panel-switch-row">
-                      <strong>去除纯色背景</strong>
-                      <Switch
-                        aria-label="去除纯色背景"
-                        checked={draftSettings.background === "plain"}
-                        onCheckedChange={checked =>
-                          scheduleAdjustments({
-                            ...draftSettingsRef.current,
-                            background: checked ? "plain" : "keep",
-                          })}
-                      />
-                    </div>
-                    <div className="panel-switch-row">
-                      <strong>水平镜像</strong>
-                      <Switch
-                        aria-label="水平镜像图纸"
-                        checked={draftSettings.mirror}
-                        onCheckedChange={checked =>
-                          scheduleAdjustments({
-                            ...draftSettingsRef.current,
-                            mirror: checked,
-                          })}
-                      />
-                    </div>
-                  </div>
-                  <PresetNumberControl
-                    key={`${draftSettings.longestEdge}-${pendingLongestEdge ?? "idle"}`}
-                    label="豆板格数"
-                    min={16}
-                    max={192}
-                    suffix="格"
-                    presets={[29, 52, 78, 104]}
-                    value={draftSettings.longestEdge}
-                    onChange={requestLongestEdge}
-                  />
-                  <PresetNumberControl
-                    label="颜色上限"
-                    min={1}
-                    max={291}
-                    suffix="色"
-                    presets={[8, 12, 16, 20]}
-                    value={draftSettings.maxColors}
-                    onChange={maxColors =>
-                      scheduleAdjustments({
-                        ...draftSettingsRef.current,
-                        maxColors,
-                      })}
-                  />
-                  <label className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!">
-                    <span>
-                      颜色合并程度
-                      <output>{draftSettings.colorMerge}</output>
-                    </span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="30"
-                      value={draftSettings.colorMerge}
-                      onChange={event =>
+              <section
+                className="panel-section max-[641px]:gap-[11px]! max-[641px]:px-3! max-[641px]:pt-2.5! max-[641px]:pb-[calc(14px+env(safe-area-inset-bottom))]!"
+                aria-label="调整图纸"
+              >
+                <div className="panel-size-row">
+                  <strong>实际图案尺寸</strong>
+                  <output>{physicalSize ? `约 ${physicalSize}` : "暂无图案内容"}</output>
+                </div>
+                <div className="panel-switches">
+                  <div className="panel-switch-row">
+                    <strong>去除纯色背景</strong>
+                    <Switch
+                      aria-label="去除纯色背景"
+                      checked={draftSettings.background === "plain"}
+                      onCheckedChange={checked =>
                         scheduleAdjustments({
                           ...draftSettingsRef.current,
-                          colorMerge: Number(event.target.value),
+                          background: checked ? "plain" : "keep",
                         })}
                     />
-                    <small>
-                      <span>0 · 保留细节</span>
-                      <span>30 · 大幅简化</span>
-                    </small>
-                  </label>
-                  <fieldset>
-                    <legend>
-                      处理模式
-                      <Button
-                        className="float-right -mt-1 min-h-6! text-muted-foreground"
-                        variant="ghost"
-                        size="xs"
-                        aria-label="查看处理模式说明"
-                        onClick={() => setProcessingGuideOpen(true)}
+                  </div>
+                  <div className="panel-switch-row">
+                    <strong>水平镜像</strong>
+                    <Switch
+                      aria-label="水平镜像图纸"
+                      checked={draftSettings.mirror}
+                      onCheckedChange={checked =>
+                        scheduleAdjustments({
+                          ...draftSettingsRef.current,
+                          mirror: checked,
+                        })}
+                    />
+                  </div>
+                </div>
+                <PresetNumberControl
+                  key={`${draftSettings.longestEdge}-${pendingLongestEdge ?? "idle"}`}
+                  label="豆板格数"
+                  min={16}
+                  max={192}
+                  suffix="格"
+                  presets={[29, 52, 78, 104]}
+                  value={draftSettings.longestEdge}
+                  onChange={requestLongestEdge}
+                />
+                <PresetNumberControl
+                  label="颜色上限"
+                  min={1}
+                  max={291}
+                  suffix="色"
+                  presets={[8, 12, 16, 20]}
+                  value={draftSettings.maxColors}
+                  onChange={maxColors =>
+                    scheduleAdjustments({
+                      ...draftSettingsRef.current,
+                      maxColors,
+                    })}
+                />
+                <label className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!">
+                  <span>
+                    颜色合并程度
+                    <output>{draftSettings.colorMerge}</output>
+                  </span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="30"
+                    value={draftSettings.colorMerge}
+                    onChange={event =>
+                      scheduleAdjustments({
+                        ...draftSettingsRef.current,
+                        colorMerge: Number(event.target.value),
+                      })}
+                  />
+                  <small>
+                    <span>0 · 保留细节</span>
+                    <span>30 · 大幅简化</span>
+                  </small>
+                </label>
+                <fieldset>
+                  <legend>
+                    处理模式
+                    <Button
+                      className="float-right -mt-1 min-h-6! text-muted-foreground"
+                      variant="ghost"
+                      size="xs"
+                      aria-label="查看处理模式说明"
+                      onClick={() => setProcessingGuideOpen(true)}
+                    >
+                      说明
+                      <CircleHelp />
+                    </Button>
+                  </legend>
+                  <div className="panel-processing-modes max-[641px]:[&_button]:min-h-[52px]!">
+                    {(
+                      [
+                        {
+                          id: "edge",
+                          title: "轮廓增强",
+                          description: "平滑杂色，突出轮廓",
+                        },
+                        {
+                          id: "average",
+                          title: "自然平均",
+                          description: "保留渐变与光影",
+                        },
+                        {
+                          id: "dominant",
+                          title: "纯色块",
+                          description: "每块采用主要颜色",
+                        },
+                      ] as const
+                    ).map(item => (
+                      <button
+                        type="button"
+                        key={item.id}
+                        className={
+                          draftSettings.processingMode === item.id
+                            ? "active"
+                            : ""
+                        }
+                        aria-pressed={
+                          draftSettings.processingMode === item.id
+                        }
+                        onClick={() =>
+                          scheduleAdjustments({
+                            ...draftSettingsRef.current,
+                            processingMode: item.id,
+                          })}
                       >
-                        说明
-                        <CircleHelp />
-                      </Button>
-                    </legend>
-                    <div className="panel-processing-modes max-[641px]:[&_button]:min-h-[52px]!">
-                      {(
-                        [
-                          {
-                            id: "edge",
-                            title: "轮廓增强",
-                            description: "平滑杂色，突出轮廓",
-                          },
-                          {
-                            id: "average",
-                            title: "自然平均",
-                            description: "保留渐变与光影",
-                          },
-                          {
-                            id: "dominant",
-                            title: "纯色块",
-                            description: "每块采用主要颜色",
-                          },
-                        ] as const
-                      ).map(item => (
-                        <button
-                          type="button"
-                          key={item.id}
-                          className={
-                            draftSettings.processingMode === item.id
-                              ? "active"
-                              : ""
-                          }
-                          aria-pressed={
-                            draftSettings.processingMode === item.id
-                          }
-                          onClick={() =>
-                            scheduleAdjustments({
-                              ...draftSettingsRef.current,
-                              processingMode: item.id,
-                            })}
-                        >
-                          <strong>{item.title}</strong>
-                          <small>{item.description}</small>
-                        </button>
-                      ))}
-                    </div>
-                  </fieldset>
-                  <fieldset className="panel-palette">
-                    <legend>
-                      调色盘
-                      <small>双击添加颜色</small>
-                    </legend>
-                    <div className="panel-palette-picker">
-                      <div
-                        className="panel-palette-scroll"
-                        aria-label="选择拼豆颜色"
-                      >
-                        <div className="panel-color-groups">
-                          {groupColors(BEAD_COLORS).map(([series, colors]) => (
-                            <section
-                              className="color-series"
-                              key={series}
-                            >
-                              <div className="color-series-heading">{series}</div>
-                              <div className="panel-all-colors">
-                                {colors.map(color => (
-                                  <button
-                                    type="button"
-                                    key={color.id}
-                                    className={
-                                      selected === color.id ? "selected" : ""
-                                    }
-                                    style={colorTileStyle(color)}
-                                    aria-label={`选择颜色 ${color.id}`}
-                                    aria-pressed={selected === color.id}
-                                    onClick={() => chooseColor(color.id)}
-                                    onDoubleClick={() => addQuickColor(color.id)}
-                                  >
-                                    {color.id}
-                                  </button>
-                                ))}
-                              </div>
-                            </section>
-                          ))}
-                        </div>
+                        <strong>{item.title}</strong>
+                        <small>{item.description}</small>
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+                <fieldset className="panel-palette">
+                  <legend>
+                    调色盘
+                    <small>双击添加颜色</small>
+                  </legend>
+                  <div className="panel-palette-picker">
+                    <div
+                      className="panel-palette-scroll"
+                      aria-label="选择拼豆颜色"
+                    >
+                      <div className="panel-color-groups">
+                        {groupColors(BEAD_COLORS).map(([series, colors]) => (
+                          <section
+                            className="color-series"
+                            key={series}
+                          >
+                            <div className="color-series-heading">{series}</div>
+                            <div className="panel-all-colors">
+                              {colors.map(color => (
+                                <button
+                                  type="button"
+                                  key={color.id}
+                                  className={
+                                    selected === color.id ? "selected" : ""
+                                  }
+                                  style={colorTileStyle(color)}
+                                  aria-label={`选择颜色 ${color.id}`}
+                                  aria-pressed={selected === color.id}
+                                  onClick={() => chooseColor(color.id)}
+                                  onDoubleClick={() => addQuickColor(color.id)}
+                                >
+                                  {color.id}
+                                </button>
+                              ))}
+                            </div>
+                          </section>
+                        ))}
                       </div>
                     </div>
-                  </fieldset>
-                  <Button
-                    className="w-full"
-                    variant="destructive"
-                    disabled={busy}
-                    onClick={() => setDeleteOpen(true)}
-                  >
-                    <Trash2 />
-                    删除
-                  </Button>
-                </section>
-              )}
-
-              {panelTab === "versions" && (
-                <section
-                  className="panel-section max-[641px]:gap-[11px]! max-[641px]:px-3! max-[641px]:pt-2.5! max-[641px]:pb-[calc(14px+env(safe-area-inset-bottom))]!"
-                  aria-labelledby="versions-title"
+                  </div>
+                </fieldset>
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void openComparison()}
                 >
-                  <div className="panel-section-heading">
-                    <div>
-                      <span>安全记录</span>
-                      <h2 id="versions-title">版本</h2>
-                    </div>
-                    <small>
-                      {project.versions.length}
-                      {" "}
-                      个版本
-                    </small>
-                  </div>
-                  <Button
-                    className="w-full"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => void openComparison()}
-                  >
-                    <Columns2 />
-                    对比原图
-                  </Button>
-                  <div className="panel-manual-version min-[980px]:[&_input]:h-[34px]! min-[980px]:[&_input]:min-h-[34px]! min-[980px]:[&_button]:h-[34px]! min-[980px]:[&_button]:min-h-[34px]! min-[980px]:[&_input]:px-[9px]! min-[980px]:[&_input]:text-[0.72rem]! max-[641px]:[&_input]:h-10! max-[641px]:[&_input]:min-h-10! max-[641px]:[&_input]:text-[0.78rem]! max-[641px]:[&_button]:h-9! max-[641px]:[&_button]:min-h-9! max-[641px]:[&_button]:px-2.5! max-[641px]:[&_button]:text-[0.72rem]! max-[641px]:[&_button]:font-[650]!">
-                    <label htmlFor="version-name">给当前版本取名</label>
-                    <div>
-                      <input
-                        id="version-name"
-                        value={versionName}
-                        onChange={event => setVersionName(event.target.value)}
-                        placeholder="例如：调整脸部之后"
-                      />
-                      <Button
-                        size="sm"
-                        disabled={!versionName.trim() || busy}
-                        onClick={() => void saveManualVersion()}
-                      >
-                        保存
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="panel-version-list min-[980px]:[&_button]:h-[34px]! min-[980px]:[&_button]:min-h-[34px]! max-[641px]:[&_article]:px-[9px]! max-[641px]:[&_article]:py-2! max-[641px]:[&_article>span]:px-1.5! max-[641px]:[&_article>span]:py-[3px]! max-[641px]:[&_article>span]:text-[0.66rem]! max-[641px]:[&_strong]:text-[0.82rem]! max-[641px]:[&_strong]:leading-[1.25]! max-[641px]:[&_small]:mt-px! max-[641px]:[&_small]:text-[0.7rem]! max-[641px]:[&_small]:leading-[1.2]! max-[641px]:[&_button]:h-9! max-[641px]:[&_button]:min-h-9! max-[641px]:[&_button]:px-2.5! max-[641px]:[&_button]:text-[0.72rem]! max-[641px]:[&_button]:font-[650]!">
-                    {[...project.versions].reverse().map((version) => {
-                      const current = samePatternContent(
-                        pattern,
-                        version.pattern,
-                      );
-                      return (
-                        <article key={version.id}>
-                          <span className={version.kind}>
-                            {version.kind === "manual" ? "手动" : "自动"}
-                          </span>
-                          <div>
-                            <strong>{version.name}</strong>
-                            <small>
-                              {new Date(version.createdAt).toLocaleString(
-                                "zh-CN",
-                              )}
-                            </small>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={busy || current}
-                            onClick={() => void restore(version)}
-                          >
-                            {current ? "当前" : "恢复"}
-                          </Button>
-                        </article>
-                      );
-                    })}
-                    {!project.versions.length && (
-                      <p className="panel-empty">
-                        还没有版本。关键操作和定时备份会出现在这里。
-                      </p>
-                    )}
-                  </div>
-                </section>
-              )}
+                  <Columns2 />
+                  对比原图
+                </Button>
+                <Button
+                  className="w-full"
+                  variant="destructive"
+                  disabled={busy}
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  <Trash2 />
+                  删除
+                </Button>
+              </section>
             </div>
           </aside>
         </>

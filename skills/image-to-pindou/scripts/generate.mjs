@@ -428,7 +428,7 @@ async function projectBackup(source, style, options, width, height, cells) {
   return {
     fileName: `${name}.pindou.json`,
     value: {
-      schemaVersion: 3,
+      schemaVersion: 4,
       exportedAt: createdAt,
       sources: [`data:image/png;base64,${sourcePng.toString("base64")}`],
       projects: [{
@@ -439,9 +439,10 @@ async function projectBackup(source, style, options, width, height, cells) {
           processingMode: style === "faithful" ? "average" : style === "cartoon" ? "dominant" : "edge",
           colorMerge: style === "faithful" ? 0 : 5, background: options.background === "remove" ? "plain" : "keep", mirror: false, mode: "local",
         },
-        pattern: { id: patternId, name, createdAt, snapshot: 0 },
-        snapshots: [{ w: width, h: height, c: packCells(cells), o: { x: 0, y: 0, width, height } }],
-        versions: [{ id: randomUUID(), name: "首次生成", kind: "auto", reason: "首次生成", createdAt, patternName: name, snapshot: 0 }],
+        pattern: {
+          id: patternId, name, createdAt,
+          snapshot: { w: width, h: height, c: packCells(cells), o: { x: 0, y: 0, width, height } },
+        },
       }],
     },
   };

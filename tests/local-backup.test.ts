@@ -28,64 +28,35 @@ function project(): Project {
     transform: DEFAULT_TRANSFORM,
     settings: DEFAULT_SETTINGS,
     pattern,
-    versions: [],
   };
 }
 
 describe("本地文件夹备份", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("新版备份保留一份原图，并对相同图纸去重", async () => {
-    const valueProject = project();
-    valueProject.versions = [{
-      id: "version-1",
-      name: "相同版本",
-      kind: "manual",
-      reason: "手动保存",
-      createdAt: valueProject.pattern.createdAt,
-      pattern: structuredClone(valueProject.pattern),
-    }];
+  it("新版备份只保留一份原图和当前图纸", async () => {
     const value = JSON.parse(await (await createBackupBlob([project()])).text());
-    const deduplicated = JSON.parse(
-      await (await createBackupBlob([valueProject])).text(),
-    );
-    expect(value.schemaVersion).toBe(3);
+    expect(value.schemaVersion).toBe(4);
     expect(value.projects[0].name).toBe("备份测试");
     expect(value.sources).toHaveLength(1);
     expect(value.projects[0].source).toBe(0);
     expect(value.projects[0].generatedSource).toBeUndefined();
     expect(value.projects[0].processedSource).toBeUndefined();
     expect(JSON.stringify(value.projects)).not.toContain("sourcePreview");
-    expect(deduplicated.projects[0].snapshots).toHaveLength(1);
+    expect(value.projects[0].pattern.snapshot.w).toBe(2);
+    expect(value.projects[0].snapshots).toBeUndefined();
+    expect(value.projects[0].versions).toBeUndefined();
   });
 
-  it("只保留最近十个版本并完整还原图纸", async () => {
+  it("完整还原当前图纸", async () => {
     const value = project();
-    value.versions = Array.from({ length: 12 }, (_, index) => ({
-      id: `version-${index}`,
-      name: `版本 ${index}`,
-      kind: "auto" as const,
-      reason: "自动备份" as const,
-      createdAt: `2026-08-13T08:${String(index).padStart(2, "0")}:00.000Z`,
-      pattern: {
-        ...structuredClone(value.pattern),
-        cells: value.pattern.cells.with(
-          index % value.pattern.cells.length,
-          index % 2 ? "A1" : null,
-        ),
-      },
-    }));
     const backup = await createBackupBlob([value]),
       [restored] = await readBackupProjects(
         new File([backup], "backup.pindou.json"),
       );
     expect(await restored.source.text()).toBe("image");
     expect(restored.pattern.cells).toEqual(value.pattern.cells);
-    expect(restored.versions).toHaveLength(10);
-    expect(restored.versions[0].name).toBe("版本 2");
-    expect(restored.versions.at(-1)?.pattern.cells).toEqual(
-      value.versions.at(-1)?.pattern.cells,
-    );
+    expect(restored).not.toHaveProperty("versions");
   });
 
   it("大图作品的精简备份至少缩小八成", async () => {
@@ -117,31 +88,22 @@ describe("本地文件夹备份", () => {
     const [restored] = await readBackupProjects(
       new File([backup], "192.pindou.json"),
     );
-    expect(raw.projects[0].snapshots[0].c.s).toBe(2);
+    expect(raw.projects[0].pattern.snapshot.c.s).toBe(2);
     expect(restored.pattern.cells).toEqual(value.pattern.cells);
     expect(restored.settings.maxColors).toBe(291);
   });
 
-  it("继续读取旧版完整备份", async () => {
-    const value = project(),
-      legacy = {
-        schemaVersion: 2,
-        exportedAt: "2026-08-13T09:00:00.000Z",
-        projects: [{
-          ...value,
-          source: "data:image/png;base64,aW1hZ2U=",
-        }],
-      },
-      [restored] = await readBackupProjects(
-        new File([JSON.stringify(legacy)], "legacy.pindou.json"),
-      );
-    expect(restored.name).toBe(value.name);
-    expect(restored.source.size).toBe(5);
+  it("拒绝旧版备份且不改变现有作品", async () => {
+    const backup = JSON.parse(await (await createBackupBlob([project()])).text());
+    backup.schemaVersion = 3;
+    await expect(readBackupProjects(
+      new File([JSON.stringify(backup)], "legacy.pindou.json"),
+    )).rejects.toThrow("版本不支持");
   });
 
   it("拒绝损坏的紧凑格子且不返回部分作品", async () => {
     const backup = JSON.parse(await (await createBackupBlob([project()])).text());
-    backup.projects[0].snapshots[0].c.d = "broken";
+    backup.projects[0].pattern.snapshot.c.d = "broken";
     await expect(readBackupProjects(
       new File([JSON.stringify(backup)], "broken.pindou.json"),
     )).rejects.toThrow("备份内容不完整");

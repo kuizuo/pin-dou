@@ -544,11 +544,7 @@ export function Home({
                         {" "}
                         {patternStats(project.pattern).length}
                         {" "}
-                        色 ·
-                        {" "}
-                        {project.versions.length}
-                        {" "}
-                        个版本
+                        色
                       </p>
                       <div className="flex gap-1 max-[640px]:gap-1 [&>:first-child]:mr-auto">
                         {selectionMode
@@ -652,7 +648,7 @@ export function Home({
               <div className="flex flex-col items-center gap-[7px] rounded-[18px] border border-dashed border-border px-5 py-[55px] text-center text-muted-foreground [&_p]:m-0 [&_p]:text-[0.8rem] [&_strong]:text-[var(--ink)]">
                 <Grid2X2 size={26} />
                 <strong>还没有作品</strong>
-                <p>生成第一张图纸后，原图、设置和版本都会保存在这里。</p>
+                <p>生成第一张图纸后，原图、设置和当前图纸都会保存在这里。</p>
               </div>
             )}
       </section>
