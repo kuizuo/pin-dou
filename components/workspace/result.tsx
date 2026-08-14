@@ -21,7 +21,6 @@ import {
   Plus,
   Redo2,
   Replace,
-  Search,
   Share2,
   Square,
   Trash2,
@@ -104,7 +103,7 @@ type WorkbenchTool
     | "eraser"
     | "fill"
     | "replace";
-type PanelTab = "adjust" | "colors" | "versions";
+type PanelTab = "adjust" | "versions";
 type NoticeTone = "success" | "warning";
 type HistoryEntry = Pick<
   Project,
@@ -510,15 +509,11 @@ function ToolColorProperties({
   selected,
   colors,
   disabled,
-  total,
-  colorCount,
   onSelect,
 }: {
   selected: string;
   colors: BeadColor[];
   disabled: boolean;
-  total: number;
-  colorCount: number;
   onSelect: (id: string) => void;
 }) {
   return (
@@ -528,14 +523,6 @@ function ToolColorProperties({
     >
       <div className="workbench-tool-properties-heading min-[980px]:justify-between! min-[980px]:p-0!">
         <span>颜色</span>
-        <small>
-          {total}
-          {" "}
-          粒 ·
-          {colorCount}
-          {" "}
-          色
-        </small>
       </div>
       <div className="workbench-tool-colors min-[980px]:flex-wrap! min-[980px]:overflow-visible!">
         {colors.map(color => (
@@ -590,7 +577,6 @@ export function Result({
   const [scale, setScale] = useState(1),
     [spacePanning, setSpacePanning] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true),
-    [panelReady, setPanelReady] = useState(false),
     [panelTab, setPanelTab] = useState<PanelTab>("adjust");
   const [draftSettings, setDraftSettings] = useState<GenerationSettings>({
     ...project.settings,
@@ -605,8 +591,7 @@ export function Result({
   } | null>(null);
   const [saving, setSaving] = useState(false),
     [adjusting, setAdjusting] = useState(false);
-  const [versionName, setVersionName] = useState(""),
-    [colorQuery, setColorQuery] = useState("");
+  const [versionName, setVersionName] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false),
     [pendingLongestEdge, setPendingLongestEdge] = useState<number | null>(null),
     [deleting, setDeleting] = useState(false),
@@ -628,8 +613,6 @@ export function Result({
     redo: () => Promise<void>;
   } | null>(null);
 
-  const stats = patternStats(pattern),
-    total = stats.reduce((sum, item) => sum + item.count, 0);
   const contentSize = useMemo(() => patternContentSize(pattern), [pattern]);
   const physicalSize = contentSize
     ? [contentSize.width, contentSize.height]
@@ -645,16 +628,6 @@ export function Result({
   const showToolColors = ["brush", "eraser", "fill", "replace"].includes(tool);
   const settingsPending
     = JSON.stringify(draftSettings) !== JSON.stringify(project.settings);
-  const filteredColors = useMemo(() => {
-    const keyword = colorQuery.trim().toLowerCase();
-    if (!keyword) return BEAD_COLORS;
-    return BEAD_COLORS.filter(
-      color =>
-        color.id.toLowerCase().includes(keyword)
-        || color.name.toLowerCase().includes(keyword),
-    );
-  }, [colorQuery]);
-
   function setNotice(message: string, tone: NoticeTone = "success") {
     setNoticeText(message);
     setNoticeTone(tone);
@@ -663,13 +636,6 @@ export function Result({
   useEffect(() => {
     pendingCallback.current = onPendingChange;
   }, [onPendingChange]);
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      if (!window.matchMedia("(min-width: 980px)").matches) setPanelOpen(false);
-      setPanelReady(true);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, []);
   useEffect(() => {
     pendingCallback.current(settingsPending);
   }, [settingsPending]);
@@ -1300,7 +1266,7 @@ export function Result({
 
   return (
     <main
-      className={`pattern-workbench max-[769px]:[--workbench-control-size:clamp(34px,8.15vw,40px)]! max-[769px]:[--panel-control-size:44px]! min-[980px]:[&.has-panel]:grid-cols-[minmax(0,1fr)_var(--workbench-panel-width)]! max-[641px]:h-[calc(100dvh-56px)]! max-[641px]:[--panel-control-size:40px]!${panelOpen ? " has-panel" : ""}`}
+      className={`pattern-workbench max-[769px]:[--workbench-control-size:clamp(34px,8.15vw,40px)]! max-[769px]:[--panel-control-size:44px]! min-[642px]:[&.has-panel]:grid-cols-[minmax(0,1fr)_var(--workbench-panel-width)]! max-[641px]:h-[calc(100dvh-56px)]! max-[641px]:[--workbench-control-size:32px]! max-[641px]:[--panel-control-size:40px]! max-[641px]:[&.has-panel]:grid-rows-[minmax(300px,50dvh)_minmax(0,1fr)]!${panelOpen ? " has-panel" : ""}`}
     >
       <section
         ref={canvasRef}
@@ -1331,12 +1297,12 @@ export function Result({
           onTransform={(_, state) => setScale(state.scale)}
         >
           <TransformComponent
-            wrapperClass="workbench-transform-wrapper max-[980px]:inset-[calc(var(--workbench-control-size)*2+32px)_8px_calc(var(--workbench-control-size)+20px)]! max-[980px]:[.has-tool-properties_&]:inset-[calc(var(--workbench-control-size)*3+44px)_8px_calc(var(--workbench-control-size)+20px)]! min-[980px]:inset-[58px_16px_54px]!"
+            wrapperClass="workbench-transform-wrapper max-[980px]:inset-[calc(var(--workbench-control-size)*2+32px)_8px_calc(var(--workbench-control-size)+20px)]! max-[980px]:[.has-tool-properties_&]:inset-[calc(var(--workbench-control-size)*3+44px)_8px_calc(var(--workbench-control-size)+20px)]! max-[641px]:inset-[calc(var(--workbench-control-size)*2+32px)_8px_8px]! max-[641px]:[.has-tool-properties_&]:inset-[calc(var(--workbench-control-size)*3+44px)_8px_8px]! min-[980px]:inset-[58px_16px_54px]!"
             contentClass="workbench-transform-content"
           >
             <div
               ref={fitTarget}
-              className="workbench-board max-[641px]:w-[min(84vmin,760px)]!"
+              className="workbench-board max-[641px]:w-[min(84vmin,760px)]! max-[641px]:p-2!"
             >
               <div className="workbench-board-frame">
                 <PatternGridAxis
@@ -1377,7 +1343,7 @@ export function Result({
         </TransformWrapper>
 
         <div
-          className="workbench-status max-[980px]:top-[calc(var(--workbench-control-size)+20px)]! max-[980px]:max-w-[calc(100%-16px)]! max-[980px]:[.has-tool-properties_&]:top-[calc(var(--workbench-control-size)*2+32px)]! min-[980px]:top-3! min-[980px]:left-3! min-[980px]:max-w-[220px]!"
+          className="workbench-status max-[980px]:top-[calc(var(--workbench-control-size)+20px)]! max-[980px]:max-w-[calc(100%-16px)]! max-[980px]:[.has-tool-properties_&]:top-[calc(var(--workbench-control-size)*2+32px)]! max-[641px]:px-2! min-[980px]:top-3! min-[980px]:left-3! min-[980px]:max-w-[220px]!"
           data-tone={busy ? "busy" : noticeTone}
           role="status"
           aria-live="polite"
@@ -1453,8 +1419,6 @@ export function Result({
             selected={selected}
             colors={quickColors}
             disabled={busy}
-            total={total}
-            colorCount={stats.length}
             onSelect={chooseColor}
           />
         )}
@@ -1500,14 +1464,14 @@ export function Result({
               {panelOpen
                 ? (
                     <>
-                      <PanelBottomClose className="min-[980px]:hidden!" />
-                      <PanelRightClose className="max-[979px]:hidden!" />
+                      <PanelBottomClose className="min-[642px]:hidden!" />
+                      <PanelRightClose className="max-[641px]:hidden!" />
                     </>
                   )
                 : (
                     <>
-                      <PanelBottomOpen className="min-[980px]:hidden!" />
-                      <PanelRightOpen className="max-[979px]:hidden!" />
+                      <PanelBottomOpen className="min-[642px]:hidden!" />
+                      <PanelRightOpen className="max-[641px]:hidden!" />
                     </>
                   )}
               <span>{panelOpen ? "收起设置" : "展开设置"}</span>
@@ -1516,7 +1480,7 @@ export function Result({
         </div>
 
         <div
-          className="workbench-lower-left @max-[841px]/workbench-canvas:[&>button]:w-[var(--workbench-control-size)]! @max-[841px]/workbench-canvas:[&>button]:px-0! @max-[841px]/workbench-canvas:[&>button>span]:hidden! max-[980px]:gap-0.5! max-[980px]:rounded-[10px]! max-[980px]:p-[3px]! min-[980px]:right-auto! min-[980px]:bottom-3! min-[980px]:left-3!"
+          className="workbench-lower-left @max-[841px]/workbench-canvas:[&>button]:w-[var(--workbench-control-size)]! @max-[841px]/workbench-canvas:[&>button]:px-0! @max-[841px]/workbench-canvas:[&>button>span]:hidden! max-[980px]:gap-0.5! max-[980px]:rounded-[10px]! max-[980px]:p-[3px]! max-[641px]:bottom-3! min-[980px]:right-auto! min-[980px]:bottom-3! min-[980px]:left-3!"
           aria-label="画布与历史控制"
         >
           <ControlTooltip
@@ -1539,7 +1503,7 @@ export function Result({
             <Button
               variant="outline"
               size="sm"
-              className="min-w-15!"
+              className="min-w-15! max-[641px]:min-w-13!"
               aria-label="恢复 100% 缩放"
               onClick={() => transformRef.current?.resetTransform(200)}
             >
@@ -1612,7 +1576,7 @@ export function Result({
         </div>
 
         <div
-          className="workbench-lower-right @max-[841px]/workbench-canvas:[&>button]:w-[var(--workbench-control-size)]! @max-[841px]/workbench-canvas:[&>button]:px-0! @max-[841px]/workbench-canvas:[&>button>span]:hidden! max-[980px]:gap-0.5! max-[980px]:rounded-[10px]! max-[980px]:p-[3px]! min-[980px]:right-3! min-[980px]:bottom-3!"
+          className="workbench-lower-right @max-[841px]/workbench-canvas:[&>button]:w-[var(--workbench-control-size)]! @max-[841px]/workbench-canvas:[&>button]:px-0! @max-[841px]/workbench-canvas:[&>button>span]:hidden! max-[980px]:gap-0.5! max-[980px]:rounded-[10px]! max-[980px]:p-[3px]! max-[641px]:bottom-3! min-[980px]:right-3! min-[980px]:bottom-3!"
           aria-label="图纸显示方式"
         >
           <ControlTooltip
@@ -1670,15 +1634,9 @@ export function Result({
 
       {panelOpen && (
         <>
-          <button
-            type="button"
-            className={`workbench-sheet-backdrop min-[980px]:hidden! max-[641px]:[inset-block-start:56px]!${panelReady ? "" : " max-[979px]:hidden!"}`}
-            aria-label="关闭设置"
-            onClick={() => setPanelOpen(false)}
-          />
           <aside
             id="workbench-panel"
-            className={`workbench-panel min-[980px]:static! min-[980px]:z-auto! min-[980px]:h-auto! min-[980px]:w-[var(--workbench-panel-width)]! min-[980px]:border-t-0! min-[980px]:border-l! min-[980px]:border-l-border! min-[980px]:shadow-[-12px_0_30px_rgb(65_37_49/0.07)]! max-[641px]:h-auto! max-[641px]:max-h-[min(68dvh,580px)]!${panelReady ? "" : " max-[979px]:hidden!"}`}
+            className="workbench-panel min-[642px]:static! min-[642px]:z-auto! min-[642px]:h-auto! min-[642px]:w-[var(--workbench-panel-width)]! min-[642px]:border-t-0! min-[642px]:border-l! min-[642px]:border-l-border! min-[642px]:shadow-[-12px_0_30px_rgb(65_37_49/0.07)]! max-[641px]:static! max-[641px]:z-auto! max-[641px]:h-auto! max-[641px]:min-h-0! max-[641px]:max-h-none! max-[641px]:overflow-hidden! max-[641px]:shadow-none!"
             role="dialog"
             aria-label="图纸设置"
           >
@@ -1690,7 +1648,6 @@ export function Result({
                 {(
                   [
                     { id: "adjust", label: "设置" },
-                    { id: "colors", label: "颜色" },
                     { id: "versions", label: "版本" },
                   ] as const
                 ).map(tab => (
@@ -1725,10 +1682,9 @@ export function Result({
                     <strong>实际图案尺寸</strong>
                     <output>{physicalSize ? `约 ${physicalSize}` : "暂无图案内容"}</output>
                   </div>
-                  <div className="panel-switch-row">
-                    <strong>背景处理</strong>
-                    <div>
-                      <span>去除纯色背景</span>
+                  <div className="panel-switches">
+                    <div className="panel-switch-row">
+                      <strong>去除纯色背景</strong>
                       <Switch
                         aria-label="去除纯色背景"
                         checked={draftSettings.background === "plain"}
@@ -1739,11 +1695,8 @@ export function Result({
                           })}
                       />
                     </div>
-                  </div>
-                  <div className="panel-switch-row">
-                    <strong>镜像处理</strong>
-                    <div>
-                      <span>水平镜像</span>
+                    <div className="panel-switch-row">
+                      <strong>水平镜像</strong>
                       <Switch
                         aria-label="水平镜像图纸"
                         checked={draftSettings.mirror}
@@ -1856,6 +1809,47 @@ export function Result({
                       ))}
                     </div>
                   </fieldset>
+                  <fieldset className="panel-palette">
+                    <legend>
+                      调色盘
+                      <small>双击添加颜色</small>
+                    </legend>
+                    <div className="panel-palette-picker">
+                      <div
+                        className="panel-palette-scroll"
+                        aria-label="选择拼豆颜色"
+                      >
+                        <div className="panel-color-groups">
+                          {groupColors(BEAD_COLORS).map(([series, colors]) => (
+                            <section
+                              className="color-series"
+                              key={series}
+                            >
+                              <div className="color-series-heading">{series}</div>
+                              <div className="panel-all-colors">
+                                {colors.map(color => (
+                                  <button
+                                    type="button"
+                                    key={color.id}
+                                    className={
+                                      selected === color.id ? "selected" : ""
+                                    }
+                                    style={colorTileStyle(color)}
+                                    aria-label={`选择颜色 ${color.id}`}
+                                    aria-pressed={selected === color.id}
+                                    onClick={() => chooseColor(color.id)}
+                                    onDoubleClick={() => addQuickColor(color.id)}
+                                  >
+                                    {color.id}
+                                  </button>
+                                ))}
+                              </div>
+                            </section>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </fieldset>
                   <Button
                     className="w-full"
                     variant="destructive"
@@ -1865,84 +1859,6 @@ export function Result({
                     <Trash2 />
                     删除
                   </Button>
-                </section>
-              )}
-
-              {panelTab === "colors" && (
-                <section
-                  className="panel-section max-[641px]:gap-[11px]! max-[641px]:px-3! max-[641px]:pt-2.5! max-[641px]:pb-[calc(14px+env(safe-area-inset-bottom))]!"
-                  aria-labelledby="colors-title"
-                >
-                  <div className="panel-section-heading">
-                    <div>
-                      <span>逐格编辑</span>
-                      <h2 id="colors-title">颜色与用量</h2>
-                    </div>
-                    <small>
-                      {stats.length}
-                      {" "}
-                      色 ·
-                      {total}
-                      {" "}
-                      粒
-                    </small>
-                  </div>
-                  <div className="panel-color-list">
-                    {stats.map(({ color, count }) => (
-                      <button
-                        type="button"
-                        key={color.id}
-                        className={selected === color.id ? "selected" : ""}
-                        style={colorTileStyle(color)}
-                        onClick={() => chooseColor(color.id)}
-                        onDoubleClick={() => addQuickColor(color.id)}
-                      >
-                        <strong>{color.id}</strong>
-                        <span>
-                          {count}
-                          {" "}
-                          粒
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  <label className="panel-color-search">
-                    <span>全部 291 色</span>
-                    <span>
-                      <Search />
-                      <input
-                        value={colorQuery}
-                        onChange={event => setColorQuery(event.target.value)}
-                        placeholder="搜索色号或名称"
-                      />
-                    </span>
-                  </label>
-                  <div className="panel-color-groups">
-                    {groupColors(filteredColors).map(([series, colors]) => (
-                      <section
-                        className="color-series"
-                        key={series}
-                      >
-                        <div className="color-series-heading">{series}</div>
-                        <div className="panel-all-colors">
-                          {colors.map(color => (
-                            <button
-                              type="button"
-                              key={color.id}
-                              className={
-                                selected === color.id ? "selected" : ""
-                              }
-                              style={colorTileStyle(color)}
-                              onClick={() => chooseColor(color.id)}
-                              onDoubleClick={() => addQuickColor(color.id)}
-                            >
-                              {color.id}
-                            </button>
-                          ))}
-                        </div>
-                      </section>
-                    ))}
-                  </div>
                 </section>
               )}
 

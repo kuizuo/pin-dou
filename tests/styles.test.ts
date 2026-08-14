@@ -237,7 +237,7 @@ describe("统一图纸工作台", () => {
       "box-shadow",
     );
     expect(result).toContain(
-      "min-[980px]:[&.has-panel]:grid-cols-[minmax(0,1fr)_var(--workbench-panel-width)]!",
+      "min-[642px]:[&.has-panel]:grid-cols-[minmax(0,1fr)_var(--workbench-panel-width)]!",
     );
   });
 
@@ -294,6 +294,8 @@ describe("统一图纸工作台", () => {
     expect(normalizedCss).toContain(
       "--workbench-control-size: clamp(34px, 8.15vw, 40px); --panel-control-size: 44px",
     );
+    expect(result).toContain("max-[641px]:[--workbench-control-size:32px]!");
+    expect(result).toContain("max-[641px]:min-w-13!");
     expect(result).toContain(
       "@max-[1121px]/workbench-canvas:[&_kbd]:hidden!",
     );
@@ -307,6 +309,7 @@ describe("统一图纸工作台", () => {
     expect(result).toContain("max-[980px]:right-auto!");
     expect(result).toContain("max-[980px]:top-2!");
     expect(result).toContain("className=\"workbench-tool-properties ");
+    expect(result).not.toContain("colorCount={stats.length}");
     expect(result).toContain(
       "max-[980px]:size-[var(--workbench-control-size)]!",
     );
@@ -336,18 +339,20 @@ describe("统一图纸工作台", () => {
 
   it("下载旁的开关打开设置抽屉", () => {
     expect(result).toContain("const [panelOpen, setPanelOpen] = useState(true)");
-    expect(result).toContain(
-      "window.matchMedia(\"(min-width: 980px)\").matches",
+    expect(result).not.toContain(
+      "window.matchMedia(\"(min-width: 642px) and (max-width: 979px)\").matches",
     );
-    expect(result).toContain("setPanelOpen(false)");
-    expect(result).toContain("<PanelBottomOpen className=\"min-[980px]:hidden!\" />");
-    expect(result).toContain("<PanelBottomClose className=\"min-[980px]:hidden!\" />");
+    expect(result).toContain("<PanelBottomOpen className=\"min-[642px]:hidden!\" />");
+    expect(result).toContain("<PanelBottomClose className=\"min-[642px]:hidden!\" />");
+    expect(result).toContain("<PanelRightOpen className=\"max-[641px]:hidden!\" />");
+    expect(result).toContain("<PanelRightClose className=\"max-[641px]:hidden!\" />");
     expect(result).toContain("{ id: \"adjust\", label: \"设置\" }");
-    expect(result).toContain("{ id: \"colors\", label: \"颜色\" }");
+    expect(result).not.toContain("{ id: \"colors\", label: \"颜色\" }");
     expect(result).toContain("{ id: \"versions\", label: \"版本\" }");
-    expect(result).toContain("className={`workbench-panel ");
+    expect(result).toContain("className=\"workbench-panel ");
     expect(result).toContain("role=\"tablist\"");
     expect(result).toContain("onDoubleClick={() => addQuickColor(color.id)}");
+    expect(result).toContain("<small>双击添加颜色</small>");
     expect(normalizedCss).toContain(
       ".workbench-toolbar:has([aria-expanded=true]) { z-index: 8; overflow: visible;",
     );
@@ -370,6 +375,11 @@ describe("统一图纸工作台", () => {
       ".panel-processing-modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));",
     );
     expect(result).toContain("scheduleAdjustments");
+    expect(result).toContain("<fieldset className=\"panel-palette\">");
+    expect(result).toContain("aria-label=\"选择拼豆颜色\"");
+    expect(normalizedCss).toContain(".panel-palette-picker { height: 152px;");
+    expect(result).not.toContain("颜色与用量");
+    expect(result).not.toContain("搜索色号或名称");
   });
 
   it("设置页可以二次确认删除当前图纸并返回首页", () => {
@@ -380,10 +390,10 @@ describe("统一图纸工作台", () => {
     expect(workspace).toContain("window.history.replaceState(null, \"\", \"/\")");
   });
 
-  it("设置面板使用紧凑的背景开关和移动端 Sheet", () => {
+  it("设置面板使用紧凑的背景开关和手机上下分区", () => {
     expect(result).toContain("<Switch");
     expect(result).toContain("checked={draftSettings.background === \"plain\"}");
-    expect(result).toContain("镜像处理");
+    expect(result).toContain("<strong>水平镜像</strong>");
     expect(result).toContain("checked={draftSettings.mirror}");
     expect(result).toContain("aria-label=\"水平镜像图纸\"");
     expect(result).not.toContain("label: \"去除纯色背景\"");
@@ -402,9 +412,12 @@ describe("统一图纸工作台", () => {
       ".workbench-status:has([data-slot=tooltip-trigger]), .workbench-status [data-slot=tooltip-trigger] { pointer-events: auto;",
     );
     expect(normalizedCss).toContain(".panel-switch-row");
-    expect(result).toContain(
-      "max-[641px]:h-auto! max-[641px]:max-h-[min(68dvh,580px)]!",
+    expect(normalizedCss).toContain(
+      ".panel-switches { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));",
     );
+    expect(result).toContain("max-[641px]:static!");
+    expect(result).toContain("max-[641px]:max-h-none!");
+    expect(result).not.toContain("workbench-sheet-backdrop");
   });
 
   it("AI 图纸生成后不再提供重新生成入口", () => {
@@ -462,9 +475,9 @@ describe("统一图纸工作台", () => {
     expect(prepare).toContain("onModeChange(mode)");
   });
 
-  it("桌面使用右侧抽屉，手机使用底部 Sheet", () => {
+  it("平板和桌面使用右侧抽屉，手机同时显示画布和设置区", () => {
     expect(result).toContain(
-      "min-[980px]:[&.has-panel]:grid-cols-[minmax(0,1fr)_var(--workbench-panel-width)]!",
+      "min-[642px]:[&.has-panel]:grid-cols-[minmax(0,1fr)_var(--workbench-panel-width)]!",
     );
     expect(css.match(/\.workbench-panel \{([^}]*)\}/)?.[1]).toContain(
       "position: fixed",
@@ -472,7 +485,15 @@ describe("统一图纸工作台", () => {
     expect(css.match(/\.workbench-panel \{([^}]*)\}/)?.[1]).toContain(
       "bottom: 0",
     );
-    expect(normalizedCss).toContain(".workbench-sheet-backdrop");
+    expect(result).toContain(
+      "max-[641px]:[&.has-panel]:grid-rows-[minmax(300px,50dvh)_minmax(0,1fr)]!",
+    );
+    expect(result).toContain(
+      "max-[641px]:inset-[calc(var(--workbench-control-size)*2+32px)_8px_8px]!",
+    );
+    expect(result).toContain("max-[641px]:p-2!");
+    expect(result).toContain("max-[641px]:bottom-3!");
+    expect(result).not.toContain("workbench-sheet-backdrop");
     expect(result).toContain("max-[641px]:h-[calc(100dvh-56px)]!");
     expect(layout).toContain("max-[641px]:[&_button]:min-h-11");
     expect(css).not.toMatch(/@media\s*\((?:max|min)-width/);

@@ -461,10 +461,6 @@ svg {
   font-size: 0.66rem;
   font-weight: 750;
 }
-.workbench-tool-properties-heading small {
-  color: var(--muted-foreground);
-  font-size: 0.6rem;
-}
 .workbench-tool-colors {
   min-width: 0;
   flex: 1;
@@ -556,44 +552,6 @@ svg {
   background: var(--border);
   flex: 1;
 }
-.color-search {
-  display: grid;
-  gap: 5px;
-  margin: 7px 0;
-  font-size: 0.7rem;
-  font-weight: 750;
-}
-.panel-color-search > span:last-child {
-  min-height: 40px;
-  padding: 0 10px;
-  border: 1px solid var(--input);
-  border-radius: 9px;
-  background: var(--card);
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.panel-color-search svg {
-  width: 15px;
-  color: var(--muted-foreground);
-}
-.color-search input,
-.panel-color-search input {
-  width: 100%;
-  min-width: 0;
-  border: 0;
-  outline: 0;
-  background: transparent;
-}
-.workbench-sheet-backdrop {
-  position: fixed;
-  z-index: 18;
-  inset: 60px 0 0;
-  min-width: 0;
-  min-height: 0;
-  border: 0;
-  background: rgb(38 24 30 / 0.3);
-}
 .workbench-panel {
   position: fixed;
   z-index: 20;
@@ -622,7 +580,7 @@ svg {
 .workbench-panel-header > div {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 4px;
 }
 .workbench-panel-header [role="tab"] {
@@ -702,6 +660,11 @@ svg {
   color: var(--muted-foreground);
   font-weight: 600;
 }
+.panel-switches {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
 .panel-switch-row {
   min-height: 42px;
   padding: 0 10px;
@@ -730,13 +693,9 @@ svg {
   font-variant-numeric: tabular-nums;
 }
 .panel-switch-row > strong {
-  font-size: 0.75rem;
-}
-.panel-switch-row > div {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted-foreground);
+  min-width: 0;
+  font-size: 0.7rem;
+  line-height: 1.25;
 }
 .panel-range {
   display: grid;
@@ -859,6 +818,20 @@ svg {
   display: grid;
   gap: 8px;
 }
+.panel-palette-picker {
+  height: 152px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--muted);
+}
+.panel-palette-scroll {
+  height: 100%;
+  min-height: 0;
+  padding-right: 3px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .panel-all-colors button {
   height: var(--panel-control-size);
   min-width: 44px;
@@ -871,39 +844,6 @@ svg {
   place-items: center;
   font-size: 0.64rem;
   font-weight: 850;
-}
-.panel-color-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-  gap: 4px;
-}
-.panel-color-list button {
-  min-height: 52px;
-  padding: 6px 4px;
-  border: 2px solid transparent;
-  border-radius: 9px;
-  background: var(--swatch);
-  color: var(--swatch-foreground);
-  display: grid;
-  place-items: center;
-}
-.panel-color-list button.selected {
-  border-color: var(--primary);
-}
-.panel-color-list strong,
-.panel-color-list span {
-  display: block;
-}
-.panel-color-list span {
-  font-size: 0.6rem;
-  opacity: 0.78;
-}
-.panel-color-search {
-  display: grid;
-  gap: 7px;
-  color: var(--foreground);
-  font-size: 0.74rem;
-  font-weight: 750;
 }
 .panel-all-colors {
   display: grid;
