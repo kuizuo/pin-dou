@@ -8,7 +8,6 @@ import {
   FolderInput,
   FolderOpen,
   Grid2X2,
-  ImagePlus,
   ListChecks,
   LoaderCircle,
   Pencil,
@@ -19,6 +18,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import type { Project } from "@/lib/types";
+import { UploadCard } from "@/components/new-project-dialog";
 import { PatternCanvas } from "@/components/pattern-canvas";
 import { PatternPreviewDialog } from "@/components/pattern-preview-dialog";
 import {
@@ -87,98 +87,6 @@ async function droppedJsonFiles(data: DataTransfer) {
     ? (await Promise.all(entries.map(entryFiles))).flat()
     : [...data.files];
   return files.filter(file => file.name.toLowerCase().endsWith(".json"));
-}
-
-function UploadCard({
-  className,
-  onFile,
-  onSample,
-}: {
-  className?: string;
-  onFile: (file?: File) => void;
-  onSample: () => void;
-}) {
-  const input = useRef<HTMLInputElement>(null),
-    [dragging, setDragging] = useState(false);
-  return (
-    <div
-      className={cn(
-        "flex min-h-[360px] flex-col gap-2.5 rounded-[22px] bg-workbench p-[18px] text-workbench-foreground shadow-[0_26px_45px_rgb(24_34_53/0.2)] [transform:rotate(1.5deg)] [&>[data-slot=button]]:border-[#d9ccd0] [&>[data-slot=button]]:bg-white [&>[data-slot=button]]:text-[#182235] max-[641px]:min-h-80! max-[641px]:[transform:none]!",
-        className,
-      )}
-    >
-      <input
-        className="hidden"
-        ref={input}
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
-        onChange={event => onFile(event.target.files?.[0])}
-      />
-      <button
-        className="flex min-h-[245px]! flex-1 cursor-pointer flex-col items-center justify-center gap-2.5 rounded-2xl border-2 border-dashed border-[#64738a] bg-workbench-raised text-inherit hover:border-primary data-[dragging=true]:border-primary data-[dragging=true]:bg-[#2b3950] data-[dragging=true]:shadow-[inset_0_0_0_3px_rgb(238_51_145/18%)]"
-        type="button"
-        data-dragging={dragging}
-        onClick={() => input.current?.click()}
-        onDragEnter={(event) => {
-          event.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDragOver={event => event.preventDefault()}
-        onDrop={(event) => {
-          event.preventDefault();
-          setDragging(false);
-          onFile(event.dataTransfer.files[0]);
-        }}
-      >
-        <span className="grid size-[62px] place-items-center rounded-[18px] bg-primary text-white">
-          <ImagePlus size={30} />
-        </span>
-        <strong className="text-[1.1rem]">
-          {dragging ? "松开即可上传" : "从相册选择图片"}
-        </strong>
-        <small className="text-center text-workbench-muted">
-          JPG、PNG、WebP、HEIC · 不超过 10MB
-        </small>
-      </button>
-      <Button
-        variant="outline"
-        onClick={onSample}
-      >
-        <ImagePlus size={17} />
-        先看示例
-      </Button>
-    </div>
-  );
-}
-
-export function NewProject({
-  onFile,
-  onSample,
-}: {
-  onFile: (file?: File) => void;
-  onSample: () => void;
-}) {
-  return (
-    <main className="workspace grid min-h-[calc(100dvh-60px)] items-center max-[640px]:min-h-[calc(100dvh-56px)] max-[641px]:w-[calc(100%-20px)]! max-[641px]:pt-2.5! max-[640px]:pb-2.5!">
-      <section className="grid grid-cols-[1fr_minmax(320px,420px)] items-center gap-[clamp(32px,7vw,80px)] rounded-3xl border border-border bg-card p-[clamp(24px,5vw,64px)] max-[900px]:grid-cols-[1fr_340px] max-[640px]:grid-cols-1 max-[640px]:gap-5 max-[640px]:rounded-[19px] max-[640px]:px-4 max-[640px]:pt-6 max-[640px]:pb-4">
-        <div>
-          <span className="eyebrow">新建图纸</span>
-          <h1 className="mt-2.5 mb-3.5 text-[clamp(2rem,4vw,3.6rem)] leading-[1.05] max-[640px]:text-[2.2rem]">
-            选择一张图片开始
-          </h1>
-          <p className="max-w-[42ch] leading-[1.75] text-muted-foreground">
-            上传后只需裁切画面并选择本机或 AI，详细参数都可以在生成后调整。
-          </p>
-        </div>
-        <UploadCard
-          className="min-h-[390px]! [transform:none]! max-[640px]:min-h-80!"
-          onFile={onFile}
-          onSample={onSample}
-        />
-      </section>
-    </main>
-  );
 }
 
 export function Home({

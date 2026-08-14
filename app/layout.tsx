@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_SC } from "next/font/google";
+import { NewProjectProvider } from "@/components/new-project-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "react-image-crop/dist/ReactCrop.css";
 import "./globals.css";
@@ -36,7 +37,9 @@ export default function RootLayout({
       <body
         className={`${bodyFont.variable} max-[641px]:[&_button]:min-h-11 max-[641px]:[&_button]:min-w-11 max-[641px]:[&_select]:min-h-11 max-[641px]:[&_select]:min-w-11 max-[641px]:[&_input]:min-h-11 max-[641px]:[&_input]:min-w-11 max-[641px]:[&_input[type=range]]:h-11`}
       >
-        <TooltipProvider delay={350}>{children}</TooltipProvider>
+        <NewProjectProvider>
+          <TooltipProvider delay={350}>{children}</TooltipProvider>
+        </NewProjectProvider>
       </body>
     </html>
   );

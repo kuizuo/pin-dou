@@ -1,5 +1,5 @@
 export type WorkspaceRoute = {
-  stage: "home" | "new" | "result";
+  stage: "home" | "result";
   projectId?: string;
 };
 
@@ -8,7 +8,6 @@ export function projectPath(projectId: string) {
 }
 
 export function workspaceRoute(pathname: string): WorkspaceRoute {
-  if (pathname === "/new") return { stage: "new" };
   const match = pathname.match(/^\/patterns\/([^/]+)\/?$/);
   if (match)
     return { stage: "result", projectId: decodeURIComponent(match[1]) };

@@ -22,6 +22,10 @@ const header = readFileSync(
   new URL("../components/app-header.tsx", import.meta.url),
   "utf8",
 );
+const newProjectDialog = readFileSync(
+  new URL("../components/new-project-dialog.tsx", import.meta.url),
+  "utf8",
+);
 const home = readFileSync(
   new URL("../components/workspace/home.tsx", import.meta.url),
   "utf8",
@@ -63,13 +67,17 @@ describe("统一图纸工作台", () => {
     expect(skillPage).toContain("npx skills add kuizuo/pin-dou");
     expect(skillPage).toContain("/skill/mcd-lulu-pattern.png");
     expect(skillPage.match(/<CopyButton/g)).toHaveLength(2);
-    expect(skillPage).toContain("href=\"/new\"");
+    expect(skillPage).toContain("<NewProjectTrigger");
     expect(copyButton).toContain("navigator.clipboard.writeText(value)");
     expect(copyButton).toContain("已复制");
     expect(copyButton).toContain("setState(\"idle\"), 2000");
     expect(header).toContain("listProjects()");
     expect(header).toContain("router.push(projectPath(id))");
-    expect(header).toContain("router.push(\"/new\")");
+    expect(header).toContain("else openDialog()");
+    expect(newProjectDialog).toContain("input.current?.click()");
+    expect(workspace).toContain("<Dialog.Popup");
+    expect(workspace).toContain("<Prepare");
+    expect(existsSync(new URL("../app/new/page.tsx", import.meta.url))).toBe(false);
   });
 
   it("作品列表支持多选后统一确认删除", () => {
@@ -115,9 +123,10 @@ describe("统一图纸工作台", () => {
     expect(prepare).toContain("aspect={aspect}");
     expect(prepare).not.toContain("颜色上限");
     expect(prepare).not.toContain("图案最长边");
-    expect(prepare).toContain("w-[min(1320px,calc(100%-40px))]");
+    expect(prepare).toContain("w-[min(740px,calc(100%-32px))]");
     expect(normalizedCss).not.toContain(".prepare-submit-bar");
-    expect(prepare).toContain("mb-3.5 flex min-h-[58px]");
+    expect(prepare).toContain("mb-3 flex min-h-11");
+    expect(prepare).toContain(">裁切图片</h2>");
   });
 
   it("格数和颜色使用常用值按钮，也可直接填写", () => {
@@ -133,6 +142,16 @@ describe("统一图纸工作台", () => {
     expect(result).not.toContain("disabled={hasManualEdits}");
     expect(result).not.toMatch(/type="range"[\s\S]{0,160}longestEdge/);
     expect(result).not.toMatch(/type="range"[\s\S]{0,160}maxColors/);
+  });
+
+  it("生成时保存完整图片调整结果，原图对比直接使用该结果", () => {
+    expect(workspace).toContain("const adjustedSource = await renderGenerationSource(");
+    expect(workspace).toContain("adjustedSourceBlob");
+    expect(result).toContain("renderGenerationSource(");
+    expect(result).toContain("projectRef.current.transform");
+    expect(result).toContain("projectRef.current.generatedSource");
+    expect(result).toContain("? await readBlobAsDataUrl(source)");
+    expect(result).not.toContain("original: await readBlobAsDataUrl(projectRef.current.source)");
   });
 
   it("三个 AI 服务都在设置弹窗中，密钥不挤占主界面", () => {
@@ -401,7 +420,7 @@ describe("统一图纸工作台", () => {
     expect(prepare).toContain("{showVariants && (");
     expect(prepare).toContain("onClick={onReturnToImage}");
     expect(prepare).not.toContain("onBack");
-    expect(prepare).toContain("{!showVariants && (\n          <Button");
+    expect(prepare).toContain("{!showVariants && (");
     expect(prepare).not.toContain("showVariants ? \"重新生成\"");
     expect(workspace).toContain("onReturnToImage={() => {");
     expect(workspace).toContain("aiRunRef.current += 1");
@@ -457,21 +476,19 @@ describe("统一图纸工作台", () => {
     expect(css).not.toMatch(/@media\s*\((?:max|min)-width/);
   });
 
-  it("手机端图片工具单行等宽排列，AI 设置与生成方式保持同一行", () => {
-    expect(prepare).toContain(
-      "max-[640px]:grid-cols-[repeat(auto-fit,minmax(0,1fr))]",
-    );
-    expect(prepare).toContain("max-[640px]:contents");
-    expect(prepare).toContain("max-[641px]:grid-cols-4");
-    expect(prepare).toContain("grid-cols-[minmax(0,1fr)_44px]");
-    expect(prepare).toContain("max-[641px]:size-11!");
+  it("手机端图片工具和生成操作保持紧凑排列", () => {
+    expect(prepare).toContain("max-[640px]:grid-cols-2");
+    expect(prepare).toContain("max-[641px]:grid-cols-2");
+    expect(prepare).toContain("grid grid-cols-2 gap-2 border-t");
+    expect(prepare).toContain("max-[640px]:text-xs");
+    expect(prepare).toContain("flex-none border-l border-border");
   });
 
   it("首页和裁切区支持拖入图片，替换前需要确认", () => {
-    expect(home).toContain("松开即可上传");
-    expect(home).toContain("从相册选择图片");
-    expect(home).not.toContain("capture=");
-    expect(home).toContain("event.dataTransfer.files[0]");
+    expect(newProjectDialog).toContain("松开即可上传");
+    expect(newProjectDialog).toContain("从相册选择图片");
+    expect(newProjectDialog).not.toContain("capture=");
+    expect(newProjectDialog).toContain("event.dataTransfer.files[0]");
     expect(prepare).toContain("松开即可替换图片");
     expect(prepare).toContain("替换当前图片？");
     expect(prepare).toContain("确认替换");

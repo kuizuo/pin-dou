@@ -13,6 +13,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Project } from "@/lib/types";
+import { useNewProjectDialog } from "@/components/new-project-dialog";
 import { PatternCanvas } from "@/components/pattern-canvas";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -44,6 +45,7 @@ export function AppHeader({
 }: AppHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { openDialog } = useNewProjectDialog();
   const standalone = onNewProject === undefined;
   const [storedProjects, setStoredProjects] = useState<Project[]>([]);
   const isHelpPage = pathname === "/help";
@@ -71,7 +73,7 @@ export function AppHeader({
 
   function newProject() {
     if (onNewProject) onNewProject();
-    else router.push("/new");
+    else openDialog();
   }
   const brand = (
     <>

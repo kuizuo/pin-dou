@@ -124,6 +124,8 @@ function selectedCanvas(
     bounds.orientedWidth / 2 - bounds.x,
     bounds.orientedHeight / 2 - bounds.y,
   );
+  const zoom = Math.max(0.25, Math.min(1.75, transform.zoom || 1));
+  context.scale(zoom, zoom);
   context.rotate((transform.rotation * Math.PI) / 180);
   context.scale(transform.flipX ? -1 : 1, transform.flipY ? -1 : 1);
   context.drawImage(image, -image.naturalWidth / 2, -image.naturalHeight / 2);

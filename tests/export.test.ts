@@ -261,16 +261,16 @@ describe("图纸 PNG 导出", () => {
 });
 
 describe("裁切框", () => {
+  const base = {
+    rotation: 0 as const,
+    flipX: false,
+    flipY: false,
+    zoom: 1,
+    offsetX: 0,
+    offsetY: 0,
+    crop: { x: 10, y: 20, width: 50, height: 25 },
+  };
   it("按图片方向把百分比裁切框转换为实际区域", () => {
-    const base = {
-      rotation: 0 as const,
-      flipX: false,
-      flipY: false,
-      zoom: 1,
-      offsetX: 0,
-      offsetY: 0,
-      crop: { x: 10, y: 20, width: 50, height: 25 },
-    };
     expect(cropAreaPixels(base, 1000, 800)).toEqual({
       x: 100,
       y: 160,
@@ -287,5 +287,11 @@ describe("裁切框", () => {
       orientedWidth: 800,
       orientedHeight: 1000,
     });
+  });
+
+  it("缩放图片不会改变裁切范围", () => {
+    expect(cropAreaPixels({ ...base, zoom: 1.75 }, 1000, 800)).toEqual(
+      cropAreaPixels(base, 1000, 800),
+    );
   });
 });

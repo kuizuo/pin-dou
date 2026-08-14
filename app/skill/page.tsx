@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
+import { NewProjectTrigger } from "@/components/new-project-dialog";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -172,17 +172,16 @@ export default function SkillPage() {
           </div>
           <div>
             <p className="mb-5 mt-0 text-sm leading-6 text-muted-foreground">
-              如果对 Skill 生成的效果不满意，可以重新上传图片，在网页中调整格数、配色和每个格子。
+              如果对 Skill 生成的效果不满意，可以替换图片，在网页中调整格数、配色和每个格子。
             </p>
-            <Link
-              href="/new"
+            <NewProjectTrigger
               className={cn(
                 buttonVariants({ variant: "secondary", size: "lg" }),
                 "font-bold",
               )}
             >
               上传图片并精修
-            </Link>
+            </NewProjectTrigger>
           </div>
         </section>
       </main>

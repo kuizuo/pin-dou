@@ -1,9 +1,11 @@
 "use client";
 
+import { Dialog } from "@base-ui/react/dialog";
 import { LoaderCircle } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Project } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
+import { useNewProjectDialog } from "@/components/new-project-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Home, NewProject } from "@/components/workspace/home";
+import { Home } from "@/components/workspace/home";
 import { type Draft, Prepare } from "@/components/workspace/prepare";
 import { Result } from "@/components/workspace/result";
 import {
@@ -57,11 +59,10 @@ import {
   type WorkspaceRoute,
 } from "@/lib/workspace-route";
 
-type Stage = "loading" | "missing" | "home" | "new" | "prepare" | "result";
+type Stage = "loading" | "missing" | "home" | "result";
 
 type WorkspaceProps = {
   initialProjectId?: string;
-  initialStage?: "home" | "new";
 };
 
 type SampleImage = { name: string; src: string };
@@ -69,6 +70,12 @@ type SampleImage = { name: string; src: string };
 const GENERATION_MODE_KEY = "pindou-generation-mode-v1";
 const GEMINI_KEY_STORAGE_KEY = "pindou-gemini-key-v1";
 const OPENAI_KEY_STORAGE_KEY = "pindou-openai-key-v1";
+
+function setPath(path: string) {
+  if (window.location.pathname !== path) {
+    window.history.pushState(null, "", path);
+  }
+}
 
 function savedGenerationMode(): GenerationMode {
   if (typeof window === "undefined") return DEFAULT_SETTINGS.mode;
@@ -104,10 +111,9 @@ function savedOpenaiKey() {
 
 export function Workspace({
   initialProjectId,
-  initialStage = "home",
 }: WorkspaceProps) {
   const [stage, setStage] = useState<Stage>(
-    initialProjectId ? "loading" : initialStage,
+    initialProjectId ? "loading" : "home",
   );
   const [projects, setProjects] = useState<Project[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -133,16 +139,16 @@ export function Workspace({
   const workbenchPendingRef = useRef(false);
   const currentProjectIdRef = useRef(initialProjectId || null);
   const aiRunRef = useRef(0);
+  const handledNewProjectRequest = useRef(0);
+  const {
+    clearRequest: clearNewProjectRequest,
+    openDialog: openNewProjectDialog,
+    request: newProjectRequest,
+  } = useNewProjectDialog();
 
   async function refresh() {
     setProjects(await listProjects());
     setProjectsReady(true);
-  }
-
-  function setPath(path: string) {
-    if (window.location.pathname !== path) {
-      window.history.pushState(null, "", path);
-    }
   }
 
   useEffect(() => {
@@ -151,7 +157,7 @@ export function Workspace({
     async function openRoute(
       route: WorkspaceRoute = initialProjectId
         ? { projectId: initialProjectId, stage: "result" }
-        : { stage: initialStage },
+        : { stage: "home" },
     ) {
       const items = await listProjects();
       if (!active) return;
@@ -191,7 +197,7 @@ export function Workspace({
       active = false;
       window.removeEventListener("popstate", pop);
     };
-  }, [initialProjectId, initialStage]);
+  }, [initialProjectId]);
 
   useEffect(() => {
     const supported = supportsLocalBackup();
@@ -243,13 +249,12 @@ export function Workspace({
     catch { /* private browsing or storage restrictions keep the current session working */ }
   }
 
-  async function chooseFile(file?: File) {
+  const chooseFile = useCallback(async (file?: File) => {
     if (!file) return;
 
     try {
       validateImageFile(file);
       const dataUrl = await prepareImageFile(file);
-      setCurrent(null);
       setDraft({
         dataUrl,
         file,
@@ -259,16 +264,13 @@ export function Workspace({
       setMessage("");
       setAiCandidates([]);
       setAiFailures([]);
-      setStage("prepare");
-      setPath("/new");
-      window.scrollTo(0, 0);
     }
     catch (error) {
       alert(error instanceof Error ? error.message : "图片无法打开。");
     }
-  }
+  }, [preferredMode]);
 
-  async function chooseSample(next = false) {
+  const chooseSample = useCallback(async (next = false) => {
     try {
       const items = samples.length
         ? samples
@@ -298,14 +300,28 @@ export function Workspace({
       setMessage("");
       setAiCandidates([]);
       setAiFailures([]);
-      setStage("prepare");
-      setPath("/new");
-      window.scrollTo(0, 0);
     }
     catch {
       alert("示例图片无法打开，请稍后再试。");
     }
-  }
+  }, [draft, preferredMode, samples]);
+
+  useEffect(() => {
+    if (
+      !newProjectRequest
+      || !/^\/(?:patterns\/[^/]+)?$/.test(window.location.pathname)
+      || handledNewProjectRequest.current === newProjectRequest.id
+    ) return;
+    handledNewProjectRequest.current = newProjectRequest.id;
+    queueMicrotask(() => {
+      clearNewProjectRequest(newProjectRequest.id);
+      void chooseFile(newProjectRequest.file);
+    });
+  }, [
+    chooseFile,
+    clearNewProjectRequest,
+    newProjectRequest,
+  ]);
 
   async function finishGeneration(
     sourceDataUrl: string,
@@ -366,6 +382,7 @@ export function Workspace({
 
       await saveProject(project);
       setCurrent(project);
+      setDraft(null);
       await refresh();
       setStage("result");
       setPath(projectPath(project.id));
@@ -428,10 +445,18 @@ export function Workspace({
     if (!draft) return;
     if (draft.settings.mode === "ai" && request)
       return generateAiVariant(request);
+    const adjustedSource = await renderGenerationSource(
+        draft.dataUrl,
+        draft.transform,
+      ),
+      adjustedSourceBlob = await fetch(adjustedSource).then(response =>
+        response.blob(),
+      );
     await finishGeneration(
-      draft.dataUrl,
+      adjustedSource,
       { ...draft.settings, background: "keep" },
       "original",
+      adjustedSourceBlob,
     );
   }
 
@@ -469,17 +494,6 @@ export function Workspace({
     void refresh();
   };
 
-  const newProject = () => {
-    setStage("new");
-    setCurrent(null);
-    setDraft(null);
-    setMessage("");
-    setAiCandidates([]);
-    setAiFailures([]);
-    setPath("/new");
-    window.scrollTo(0, 0);
-  };
-
   async function deleteCurrent() {
     if (!current) return;
     await deleteProject(current.id);
@@ -504,11 +518,19 @@ export function Workspace({
     setPendingNavigation(() => action);
   }
 
+  function closePrepare() {
+    if (busy) return;
+    setDraft(null);
+    setMessage("");
+    setAiCandidates([]);
+    setAiFailures([]);
+  }
+
   const header = (
     <AppHeader
       currentProjectId={current?.id}
       onHome={() => guardNavigation(home)}
-      onNewProject={() => guardNavigation(newProject)}
+      onNewProject={() => guardNavigation(openNewProjectDialog)}
       onSelectProject={(id) => {
         const project = projects.find(item => item.id === id);
         if (project) guardNavigation(() => openProject(project));
@@ -545,55 +567,6 @@ export function Workspace({
           projects={projects}
         />
       )}
-      {stage === "new" && (
-        <NewProject
-          onFile={file => void chooseFile(file)}
-          onSample={() => void chooseSample()}
-        />
-      )}
-      {stage === "prepare" && draft && (
-        <Prepare
-          aiProvider={aiProvider}
-          candidates={aiCandidates}
-          busy={busy}
-          draft={draft}
-          failures={aiFailures}
-          geminiKey={geminiKey}
-          openaiKey={openaiKey}
-          message={message}
-          onAiProviderChange={setAiProvider}
-          onFile={file => void chooseFile(file)}
-          onChooseCandidate={candidate => void chooseAiCandidate(candidate)}
-          onGeminiKeyChange={rememberGeminiKey}
-          onOpenaiKeyChange={rememberOpenaiKey}
-          onGenerate={request => void generate(request)}
-          onModeChange={rememberGenerationMode}
-          onReturnToImage={() => {
-            aiRunRef.current += 1;
-            setBusy(false);
-            setAiCandidates([]);
-            setAiFailures([]);
-            setMessage("");
-            window.scrollTo(0, 0);
-          }}
-          onRetry={request => void generateAiVariant(request)}
-          onSwitchSample={
-            samples.some(sample => sample.src === draft.dataUrl)
-              ? () => void chooseSample(true)
-              : undefined
-          }
-          samplePosition={
-            samples.findIndex(sample => sample.src === draft.dataUrl) + 1
-          }
-          sampleTotal={samples.length}
-          setDraft={(next) => {
-            setDraft(next);
-            setAiCandidates([]);
-            setAiFailures([]);
-            setMessage("");
-          }}
-        />
-      )}
       {stage === "result" && current && (
         <Result
           key={current.id}
@@ -603,6 +576,63 @@ export function Workspace({
           project={current}
         />
       )}
+      <Dialog.Root
+        open={draft !== null}
+        onOpenChange={open => !open && closePrepare()}
+      >
+        <Dialog.Portal>
+          <Dialog.Backdrop className="fixed inset-0 z-50 bg-[rgb(19_22_30/0.58)] backdrop-blur-[3px]" />
+          <Dialog.Viewport className="fixed inset-0 z-50 grid place-items-center p-6 max-[640px]:p-2">
+            <Dialog.Popup className="max-h-[calc(100dvh-48px)] w-full max-w-[800px] overflow-y-auto rounded-[22px] bg-background text-foreground shadow-[0_28px_80px_rgb(28_20_27/0.28)] outline-none max-[640px]:max-h-[calc(100dvh-24px)] max-[640px]:rounded-[16px]">
+              <Dialog.Title className="sr-only">调整图片</Dialog.Title>
+              {draft && (
+                <Prepare
+                  aiProvider={aiProvider}
+                  candidates={aiCandidates}
+                  busy={busy}
+                  draft={draft}
+                  failures={aiFailures}
+                  geminiKey={geminiKey}
+                  openaiKey={openaiKey}
+                  message={message}
+                  onAiProviderChange={setAiProvider}
+                  onClose={closePrepare}
+                  onFile={file => void chooseFile(file)}
+                  onChooseCandidate={candidate => void chooseAiCandidate(candidate)}
+                  onGeminiKeyChange={rememberGeminiKey}
+                  onOpenaiKeyChange={rememberOpenaiKey}
+                  onGenerate={request => void generate(request)}
+                  onModeChange={rememberGenerationMode}
+                  onReturnToImage={() => {
+                    aiRunRef.current += 1;
+                    setBusy(false);
+                    setAiCandidates([]);
+                    setAiFailures([]);
+                    setMessage("");
+                    window.scrollTo(0, 0);
+                  }}
+                  onRetry={request => void generateAiVariant(request)}
+                  onSwitchSample={
+                    samples.some(sample => sample.src === draft.dataUrl)
+                      ? () => void chooseSample(true)
+                      : undefined
+                  }
+                  samplePosition={
+                    samples.findIndex(sample => sample.src === draft.dataUrl) + 1
+                  }
+                  sampleTotal={samples.length}
+                  setDraft={(next) => {
+                    setDraft(next);
+                    setAiCandidates([]);
+                    setAiFailures([]);
+                    setMessage("");
+                  }}
+                />
+              )}
+            </Dialog.Popup>
+          </Dialog.Viewport>
+        </Dialog.Portal>
+      </Dialog.Root>
       <AlertDialog
         open={pendingNavigation !== null}
         onOpenChange={open => !open && setPendingNavigation(null)}

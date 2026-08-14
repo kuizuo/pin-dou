@@ -10,11 +10,15 @@ import {
   ImagePlus,
   LoaderCircle,
   Maximize2,
+  Minus,
+  Plus,
   RefreshCw,
+  RotateCcw,
   RotateCw,
   Settings,
   Sparkles,
   WandSparkles,
+  X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ReactCrop, {
@@ -180,7 +184,7 @@ function CropPreview({
   return (
     <div
       ref={area}
-      className="relative grid h-[min(66dvh,720px)] min-h-[440px] place-items-center overflow-hidden bg-[#f8f3f5] [background-image:linear-gradient(45deg,#eee5e8_25%,transparent_25%),linear-gradient(-45deg,#eee5e8_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#eee5e8_75%),linear-gradient(-45deg,transparent_75%,#eee5e8_75%)] [background-position:0_0,0_12px,12px_-12px,-12px_0] [background-size:24px_24px] max-[901px]:h-[min(58dvh,590px)] max-[901px]:min-h-[400px] max-[641px]:h-[48dvh] max-[641px]:min-h-80"
+      className="relative grid h-[min(44dvh,420px)] min-h-[320px] place-items-center overflow-hidden bg-[#f8f3f5] [background-image:linear-gradient(45deg,#eee5e8_25%,transparent_25%),linear-gradient(-45deg,#eee5e8_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#eee5e8_75%),linear-gradient(-45deg,transparent_75%,#eee5e8_75%)] [background-position:0_0,0_12px,12px_-12px,-12px_0] [background-size:24px_24px] max-[641px]:h-[38dvh] max-[641px]:min-h-[250px]"
       role="group"
       aria-label="图片裁切区域"
       onDragEnter={(event) => {
@@ -226,6 +230,11 @@ function CropPreview({
                 src={preview.url}
                 alt="待处理原图"
                 draggable={false}
+                style={{
+                  transform: transform.zoom !== 1
+                    ? `scale(${transform.zoom})`
+                    : undefined,
+                }}
               />
             </ReactCrop>
           )
@@ -412,6 +421,7 @@ export function Prepare({
   onChooseCandidate,
   onRetry,
   onSwitchSample,
+  onClose,
   samplePosition,
   sampleTotal,
 }: {
@@ -434,6 +444,7 @@ export function Prepare({
   onChooseCandidate: (candidate: AiStyleCandidate) => void;
   onRetry: (request: AiRequest) => void;
   onSwitchSample?: () => void;
+  onClose: () => void;
   samplePosition: number;
   sampleTotal: number;
 }) {
@@ -450,6 +461,18 @@ export function Prepare({
     [turnstileRefresh, setTurnstileRefresh] = useState(0);
   const uploadInput = useRef<HTMLInputElement>(null),
     turnstileTime = useRef(0);
+  const zoom = Math.max(0.25, Math.min(1.75, transform.zoom || 1));
+  function changeZoom(value: number) {
+    const next = Math.max(0.25, Math.min(1.75, value));
+    setDraft({
+      ...draft,
+      transform: {
+        ...transform,
+        crop: transform.crop || { x: 0, y: 0, width: 100, height: 100 },
+        zoom: next,
+      },
+    });
+  }
   function chooseMode(mode: GenerationSettings["mode"]) {
     setDraft({ ...draft, settings: { ...settings, mode } });
     onModeChange(mode);
@@ -468,40 +491,14 @@ export function Prepare({
     }
   }
   return (
-    <main className="mx-auto w-[min(1320px,calc(100%-40px))] pt-7 pb-[120px] max-[640px]:w-[calc(100%-20px)] max-[640px]:pt-2.5 max-[640px]:pb-[104px]">
-      <header className="mb-3.5 flex min-h-[58px] items-center justify-between gap-2 max-[640px]:grid max-[640px]:grid-cols-[repeat(auto-fit,minmax(0,1fr))] max-[640px]:gap-1.5 max-[360px]:[&_svg]:hidden">
-        <div className="flex min-w-0 items-center gap-2 max-[640px]:contents">
-          <input
-            ref={uploadInput}
-            type="file"
-            hidden
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
-            onChange={(event) => {
-              setReplacementFile(event.target.files?.[0] || null);
-              event.target.value = "";
-            }}
-          />
-          {showVariants && (
+    <main className="mx-auto w-[min(740px,calc(100%-32px))] py-3 max-[640px]:w-[calc(100%-20px)] max-[640px]:py-2">
+      <header className="mb-3 flex min-h-11 items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <h2 className="m-0 text-xl max-[640px]:text-lg">裁切图片</h2>
+          {onSwitchSample && sampleTotal > 1 && (
             <Button
-              variant="outline"
-              onClick={onReturnToImage}
-            >
-              <ArrowLeft />
-              返回
-            </Button>
-          )}
-          <Button
-            className="max-[640px]:min-w-0 max-[640px]:flex-1 max-[640px]:gap-1 max-[640px]:px-2 max-[640px]:text-xs"
-            variant="outline"
-            disabled={busy}
-            onClick={() => uploadInput.current?.click()}
-          >
-            <ImagePlus />
-            重新上传
-          </Button>
-          {!showVariants && onSwitchSample && sampleTotal > 1 && (
-            <Button
-              className="max-[640px]:min-w-0 max-[640px]:flex-1 max-[640px]:gap-1 max-[640px]:px-2 max-[640px]:text-xs"
+              className="h-8 px-2 text-xs max-[640px]:min-h-11"
+              size="sm"
               variant="outline"
               aria-label={`切换示例，当前第 ${samplePosition} 张，共 ${sampleTotal} 张`}
               disabled={busy}
@@ -515,26 +512,25 @@ export function Prepare({
             </Button>
           )}
         </div>
-        {!showVariants && (
-          <Button
-            className="max-[640px]:w-full max-[640px]:gap-1 max-[640px]:px-2 max-[640px]:text-xs"
-            disabled={busy}
-            onClick={() => aiMode ? runAi(onGenerate) : onGenerate()}
-          >
-            {busy
-              ? (
-                  <LoaderCircle className="spin" />
-                )
-              : aiMode
-                ? (
-                    <Sparkles />
-                  )
-                : (
-                    <WandSparkles />
-                  )}
-            {busy ? "正在处理" : "生成图纸"}
-          </Button>
-        )}
+        <input
+          ref={uploadInput}
+          type="file"
+          hidden
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+          onChange={(event) => {
+            setReplacementFile(event.target.files?.[0] || null);
+            event.target.value = "";
+          }}
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={busy}
+          aria-label="关闭图片调整弹窗"
+          onClick={onClose}
+        >
+          <X />
+        </Button>
       </header>
       {!showVariants && (
         <section className="overflow-hidden rounded-[22px] border border-border bg-card shadow-[0_18px_50px_rgb(69_43_53/0.08)]">
@@ -544,91 +540,160 @@ export function Prepare({
             onReplaceFile={file => setReplacementFile(file || null)}
             setDraft={setDraft}
           />
-          <div className="flex min-h-[86px] items-center justify-between gap-[18px] border-t border-border p-3 max-[901px]:flex-col max-[901px]:items-stretch max-[641px]:gap-3">
-            <div
-              className="flex min-w-0 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:min-h-11 [&>*]:flex-none [&>button.active]:border-primary! [&>button.active]:bg-accent! [&>button.active]:text-accent-foreground! [&_[data-slot=button]]:border-border! [&_[data-slot=button]]:bg-muted! [&_[data-slot=button]]:text-foreground! max-[641px]:grid max-[641px]:w-full max-[641px]:grid-cols-4 max-[641px]:gap-1 max-[641px]:overflow-visible max-[641px]:p-0 max-[641px]:[&>*]:w-full max-[641px]:[&>*]:min-w-0 max-[641px]:[&>*]:gap-1 max-[641px]:[&>*]:px-1 max-[641px]:[&>*]:text-xs max-[360px]:[&_svg]:hidden"
-              aria-label="图片方向与裁切比例"
-            >
+          <div className="grid gap-2 border-t border-border p-2.5">
+            <div className="grid grid-cols-[40px_minmax(120px,1fr)_40px_auto_auto] items-center gap-2 border-b border-border pb-2.5 max-[640px]:grid-cols-[40px_minmax(80px,1fr)_40px_auto]">
               <Button
-                variant="workbench"
-                onClick={() =>
-                  setDraft({
-                    ...draft,
-                    transform: {
-                      ...transform,
-                      rotation: ((transform.rotation + 90)
-                        % 360) as SourceTransform["rotation"],
-                    },
-                  })}
+                variant="outline"
+                size="icon"
+                disabled={zoom <= 0.25}
+                aria-label="缩小图片"
+                onClick={() => changeZoom(zoom - 0.1)}
               >
-                <RotateCw />
-                旋转
+                <Minus />
               </Button>
+              <input
+                className="h-10 w-full accent-primary max-[640px]:min-w-0"
+                type="range"
+                min="0.25"
+                max="1.75"
+                step="0.05"
+                value={zoom}
+                aria-label="图片缩放"
+                onChange={event => changeZoom(Number(event.target.value))}
+              />
               <Button
-                variant="workbench"
-                onClick={() =>
-                  setDraft({
-                    ...draft,
-                    transform: { ...transform, flipX: !transform.flipX },
-                  })}
+                variant="outline"
+                size="icon"
+                disabled={zoom >= 1.75}
+                aria-label="放大图片"
+                onClick={() => changeZoom(zoom + 0.1)}
               >
-                <FlipHorizontal />
-                水平翻转
+                <Plus />
               </Button>
+              <output className="min-w-12 text-center text-xs font-bold text-muted-foreground max-[640px]:hidden">
+                {`${Math.round(zoom * 100)}%`}
+              </output>
               <Button
-                variant="workbench"
-                onClick={() =>
-                  setDraft({
-                    ...draft,
-                    transform: { ...transform, flipY: !transform.flipY },
-                  })}
+                className="max-[640px]:px-2"
+                variant="outline"
+                disabled={zoom === 1}
+                onClick={() => changeZoom(1)}
               >
-                <FlipVertical />
-                垂直翻转
-              </Button>
-              <Button
-                className={cropAspect === 1 ? "active" : ""}
-                variant="workbench"
-                aria-pressed={cropAspect === 1}
-                onClick={() =>
-                  setCropAspect(current => current === 1 ? undefined : 1)}
-              >
-                <CropIcon />
-                1:1 裁切
+                <RotateCcw />
+                复原
               </Button>
             </div>
-            <fieldset className="m-0 flex min-w-0 items-center justify-end gap-2.5 border-0 p-0 max-[901px]:w-full max-[901px]:justify-between max-[641px]:grid max-[641px]:grid-cols-[minmax(0,1fr)_44px] max-[641px]:gap-2">
-              <legend className="sr-only">生成方式</legend>
-              <div className="flex gap-[5px] [&_button]:inline-flex [&_button]:min-h-11 [&_button]:items-center [&_button]:justify-center [&_button]:gap-1.5 [&_button]:rounded-[10px] [&_button]:border [&_button]:border-border [&_button]:bg-muted [&_button]:px-4 [&_button]:font-[750] [&_button]:whitespace-nowrap [&_button]:text-foreground [&_button.active]:border-primary [&_button.active]:bg-accent [&_button.active]:text-accent-foreground [&_button.active]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary),transparent_35%)] [&_svg]:w-[17px] max-[641px]:min-w-0 max-[641px]:gap-1 max-[641px]:[&_button]:min-w-0 max-[641px]:[&_button]:flex-1 max-[641px]:[&_button]:px-2">
+            <div className="flex items-center justify-between gap-2.5 max-[801px]:flex-col max-[801px]:items-stretch">
+              <div
+                className="flex min-w-0 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:min-h-11 [&>*]:flex-none [&>button.active]:border-primary! [&>button.active]:bg-accent! [&>button.active]:text-accent-foreground! [&_[data-slot=button]]:border-border! [&_[data-slot=button]]:bg-muted! [&_[data-slot=button]]:text-foreground! max-[641px]:grid max-[641px]:w-full max-[641px]:grid-cols-2 max-[641px]:gap-1 max-[641px]:overflow-visible max-[641px]:p-0 max-[641px]:[&>*]:w-full max-[641px]:[&>*]:min-w-0 max-[641px]:[&>*]:gap-1 max-[641px]:[&>*]:px-1 max-[641px]:[&>*]:text-xs max-[360px]:[&_svg]:hidden"
+                aria-label="图片方向与裁切比例"
+              >
+                <Button
+                  variant="workbench"
+                  onClick={() =>
+                    setDraft({
+                      ...draft,
+                      transform: {
+                        ...transform,
+                        rotation: ((transform.rotation + 90)
+                          % 360) as SourceTransform["rotation"],
+                      },
+                    })}
+                >
+                  <RotateCw />
+                  旋转
+                </Button>
+                <Button
+                  variant="workbench"
+                  onClick={() =>
+                    setDraft({
+                      ...draft,
+                      transform: { ...transform, flipX: !transform.flipX },
+                    })}
+                >
+                  <FlipHorizontal />
+                  水平翻转
+                </Button>
+                <Button
+                  variant="workbench"
+                  onClick={() =>
+                    setDraft({
+                      ...draft,
+                      transform: { ...transform, flipY: !transform.flipY },
+                    })}
+                >
+                  <FlipVertical />
+                  垂直翻转
+                </Button>
+                <Button
+                  className={cropAspect === 1 ? "active" : ""}
+                  variant="workbench"
+                  aria-pressed={cropAspect === 1}
+                  onClick={() =>
+                    setCropAspect(current => current === 1 ? undefined : 1)}
+                >
+                  <CropIcon />
+                  1:1 裁切
+                </Button>
+              </div>
+              <fieldset className="m-0 flex min-w-0 items-center justify-end gap-2 border-0 p-0 max-[801px]:w-full max-[801px]:justify-end max-[640px]:grid max-[640px]:grid-cols-2 max-[640px]:gap-1.5">
+                <legend className="sr-only">生成方式</legend>
                 <button
                   type="button"
                   aria-pressed={!aiMode}
-                  className={!aiMode ? "active" : ""}
+                  className={`inline-flex h-11 items-center justify-center rounded-[10px] border px-4 font-[750] whitespace-nowrap max-[640px]:px-2 max-[640px]:text-xs ${!aiMode ? "border-primary bg-accent text-accent-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary),transparent_35%)]" : "border-border bg-muted text-foreground"}`}
                   onClick={() => chooseMode("local")}
                 >
                   本地处理
                 </button>
-                <button
-                  type="button"
-                  aria-pressed={aiMode}
-                  className={aiMode ? "active" : ""}
-                  onClick={() => chooseMode("ai")}
-                >
-                  <Sparkles />
-                  AI 处理
-                </button>
-              </div>
+                <div className="flex h-11 min-w-0 overflow-hidden rounded-[10px] border border-border bg-muted text-foreground [&_button]:inline-flex [&_button]:h-full [&_button]:items-center [&_button]:justify-center [&_button]:gap-1.5 [&_button]:px-3 [&_button]:font-[750] [&_button]:whitespace-nowrap [&_svg]:size-4 max-[640px]:[&_button]:px-2 max-[640px]:[&_button]:text-xs">
+                  <button
+                    className={`flex-1 ${aiMode ? "bg-accent text-accent-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary),transparent_35%)]" : ""}`}
+                    type="button"
+                    aria-pressed={aiMode}
+                    onClick={() => chooseMode("ai")}
+                  >
+                    <Sparkles />
+                    AI 处理
+                  </button>
+                  <button
+                    className="flex-none border-l border-border"
+                    type="button"
+                    aria-label={`AI 设置，当前使用 ${AI_PROVIDER_NAMES[aiProvider]}`}
+                    onClick={() => setAiSettingsOpen(true)}
+                  >
+                    <Settings />
+                  </button>
+                </div>
+              </fieldset>
+            </div>
+            <div className="grid grid-cols-2 gap-2 border-t border-border pt-2.5 [&_button]:w-full max-[640px]:gap-1.5 max-[640px]:[&_button]:px-2 max-[640px]:[&_button]:text-xs">
               <Button
-                className="flex-none max-[641px]:size-11! max-[641px]:p-0!"
-                type="button"
                 variant="outline"
-                size="icon-sm"
-                aria-label={`AI 设置，当前使用 ${AI_PROVIDER_NAMES[aiProvider]}`}
-                onClick={() => setAiSettingsOpen(true)}
+                disabled={busy}
+                onClick={() => uploadInput.current?.click()}
               >
-                <Settings />
+                <ImagePlus />
+                替换图片
               </Button>
-            </fieldset>
+              <Button
+                disabled={busy}
+                onClick={() => aiMode ? runAi(onGenerate) : onGenerate()}
+              >
+                {busy
+                  ? (
+                      <LoaderCircle className="spin" />
+                    )
+                  : aiMode
+                    ? (
+                        <Sparkles />
+                      )
+                    : (
+                        <WandSparkles />
+                      )}
+                {busy ? "正在处理" : "生成图纸"}
+              </Button>
+            </div>
           </div>
         </section>
       )}
@@ -673,6 +738,26 @@ export function Prepare({
             />
           </div>
         </section>
+      )}
+      {showVariants && (
+        <div className="mt-3 flex items-center gap-2">
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={onReturnToImage}
+          >
+            <ArrowLeft />
+            返回裁切
+          </Button>
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() => uploadInput.current?.click()}
+          >
+            <ImagePlus />
+            替换图片
+          </Button>
+        </div>
       )}
       {!showVariants && message && (
         <p

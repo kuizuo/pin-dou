@@ -82,6 +82,7 @@ import {
   imageToPattern,
   readBlobAsDataUrl,
   removeBackground,
+  renderGenerationSource,
   renderPattern,
   sharePatternPng,
 } from "@/lib/pattern";
@@ -1147,8 +1148,14 @@ export function Result({
 
   async function openComparison() {
     try {
+      const source = projectRef.current.generatedSource;
       setComparison({
-        original: await readBlobAsDataUrl(projectRef.current.source),
+        original: source
+          ? await readBlobAsDataUrl(source)
+          : await renderGenerationSource(
+              await readBlobAsDataUrl(projectRef.current.source),
+              projectRef.current.transform,
+            ),
         current: renderPattern(patternRef.current, false).toDataURL("image/png"),
       });
     }
