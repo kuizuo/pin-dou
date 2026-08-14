@@ -18,7 +18,7 @@
 
 <p align="center">
   <a href="https://pindou.kuizuo.me">
-    <img src="./public/readme/home.png" alt="拼豆图纸生成器主页">
+    <img src="./public/readme/home.png" alt="拼豆图纸编辑页面">
   </a>
 </p>
 
