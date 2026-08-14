@@ -395,7 +395,7 @@ export function imageDataToCells(
     throw new Error("图片像素数据不完整。请重新选择图片。");
   const palette = choosePalette(
     pixels,
-    Math.max(1, Math.min(30, maxColors)),
+    Math.max(1, Math.min(291, maxColors)),
     availableColors,
   );
   if (!palette.length) return Array(width * height).fill(null);
@@ -608,7 +608,7 @@ export async function imageToPattern(
   const source = transformedCanvas(image, transform);
   const longestEdge = Math.max(
     16,
-    Math.min(104, Math.round(settings.longestEdge)),
+    Math.min(192, Math.round(settings.longestEdge)),
   );
   const ratio = longestEdge / Math.max(source.width, source.height);
   const contentWidth = Math.max(1, Math.round(source.width * ratio)),

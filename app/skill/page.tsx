@@ -34,7 +34,7 @@ export default function SkillPage() {
             image-to-pindou
           </h1>
           <p className="mb-0 mt-4 text-base leading-7 text-muted-foreground">
-            安装后，发送一张图片和一句要求，即可生成拼豆预览、完整图纸和购豆清单。
+            安装后，发送一张图片和一句要求，即可生成拼豆预览、完整图纸、购豆清单和可继续精修的作品文件。
           </p>
         </header>
 
@@ -81,7 +81,7 @@ export default function SkillPage() {
           <div className="min-w-0">
             <ol className="mb-6 mt-0 grid gap-3 pl-5 text-sm leading-6 text-muted-foreground">
               <li>在对话中发送需要转换的图片。粘贴下面的示例，并按需修改格数、背景和颜色数量。</li>
-              <li>检查预览和图纸，再按购豆清单准备材料。</li>
+              <li>检查预览和图纸；需要精修时，将生成的 .pindou.json 导入“我的作品”。</li>
             </ol>
             <div className="overflow-hidden rounded-xl border border-border bg-card">
               <div className="flex min-h-12 items-center justify-between gap-3 border-b border-border px-4">

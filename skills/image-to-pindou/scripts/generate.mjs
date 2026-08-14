@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import sharp from "sharp";
@@ -11,7 +12,7 @@ const HELP = `Usage:
 
 Options:
   --style faithful|bead|cartoon|all  Processing style (default: bead)
-  --size 8..300                       Longest edge in cells (default: 50)
+  --size 16..192                      Longest edge in cells (default: 50)
   --max-colors 1..291                 Final color cap (default: 18)
   --background keep|remove            Outer background handling (default: keep)
   --cell-px 8..64                     Drawing cell size (default: 24)
@@ -50,7 +51,7 @@ function parseArgs(argv) {
   }
   if (!input) throw new Error("An input image is required.");
   if (![...STYLES, "all"].includes(options.style)) throw new Error("Invalid --style.");
-  if (!Number.isInteger(options.size) || options.size < 8 || options.size > 300) throw new Error("--size must be an integer from 8 to 300.");
+  if (!Number.isInteger(options.size) || options.size < 16 || options.size > 192) throw new Error("--size must be an integer from 16 to 192.");
   if (!Number.isInteger(options.maxColors) || options.maxColors < 1 || options.maxColors > 291) throw new Error("--max-colors must be an integer from 1 to 291.");
   if (!Number.isInteger(options.cellPx) || options.cellPx < 8 || options.cellPx > 64) throw new Error("--cell-px must be an integer from 8 to 64.");
   if (!["keep", "remove"].includes(options.background)) throw new Error("Invalid --background.");
@@ -123,8 +124,13 @@ function parseCsv(text) {
 }
 
 async function loadPalette(file) {
-  const palette = parseCsv(await readFile(file || path.join(ROOT, "palettes/mard-291.csv"), "utf8"));
+  const builtIn = parseCsv(await readFile(path.join(ROOT, "palettes/mard-291.csv"), "utf8"));
+  const palette = file ? parseCsv(await readFile(file, "utf8")) : builtIn;
   if (!palette.length) throw new Error("Palette is empty.");
+  if (file) {
+    const supported = new Map(builtIn.map(color => [color.code, color.rgb.join(",")]));
+    if (palette.some(color => supported.get(color.code) !== color.rgb.join(","))) throw new Error("Custom palettes must be a subset of the bundled MARD palette.");
+  }
   return palette;
 }
 
@@ -407,6 +413,40 @@ function stats(cells) {
 
 function escapeXml(value) { return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;"); }
 
+export function packCells(cells) {
+  const palette = [...new Set(cells.filter(Boolean).map(color => color.code))], indexes = new Map(palette.map((code, index) => [code, index + 1])), size = palette.length < 255 ? 1 : 2, bytes = Buffer.alloc(cells.length * size);
+  cells.forEach((color, index) => {
+    const value = color ? indexes.get(color.code) : 0;
+    if (size === 1) bytes[index] = value;
+    else { bytes[index * 2] = value & 255; bytes[index * 2 + 1] = value >> 8; }
+  });
+  return { p: palette, d: bytes.toString("base64"), s: size };
+}
+
+async function projectBackup(source, style, options, width, height, cells) {
+  const createdAt = new Date().toISOString(), sourceName = path.parse(options.input).name || "原图", outputName = path.basename(options.out) || sourceName, name = options.style === "all" ? `${outputName}-${style}` : outputName, patternId = randomUUID(), sourcePng = await sharp(source).rotate().png().toBuffer();
+  return {
+    fileName: `${name}.pindou.json`,
+    value: {
+      schemaVersion: 3,
+      exportedAt: createdAt,
+      sources: [`data:image/png;base64,${sourcePng.toString("base64")}`],
+      projects: [{
+        id: randomUUID(), name, createdAt, updatedAt: createdAt, sourceName: `${sourceName}.png`, source: 0,
+        transform: { rotation: 0, flipX: false, flipY: false, zoom: 1, offsetX: 0, offsetY: 0 },
+        settings: {
+          longestEdge: Math.max(width, height), maxColors: options.maxColors, paletteSize: 291, excludedColorIds: [],
+          processingMode: style === "faithful" ? "average" : style === "cartoon" ? "dominant" : "edge",
+          colorMerge: style === "faithful" ? 0 : 5, background: options.background === "remove" ? "plain" : "keep", mirror: false, mode: "local",
+        },
+        pattern: { id: patternId, name, createdAt, snapshot: 0 },
+        snapshots: [{ w: width, h: height, c: packCells(cells), o: { x: 0, y: 0, width, height } }],
+        versions: [{ id: randomUUID(), name: "首次生成", kind: "auto", reason: "首次生成", createdAt, patternName: name, snapshot: 0 }],
+      }],
+    },
+  };
+}
+
 function renderSvg(cells, width, height, cellPx, usage) {
   const band = 32, bomWidth = 260, canvasWidth = band + width * cellPx + bomWidth, canvasHeight = Math.max(band + height * cellPx, 70 + usage.length * 28);
   const parts = [`<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}" viewBox="0 0 ${canvasWidth} ${canvasHeight}" font-family="Arial,sans-serif"><rect width="100%" height="100%" fill="white"/>`, "<g id=\"cells\">\n"];
@@ -428,17 +468,17 @@ function renderSvg(cells, width, height, cellPx, usage) {
 
 async function writeOutputs(directory, source, style, options, width, height, cells) {
   await mkdir(directory, { recursive: true });
+  await Promise.all(["config.json", "grid.json"].map(file => rm(path.join(directory, file), { force: true })));
   const usage = stats(cells), raw = Buffer.alloc(width * height * 4);
   cells.forEach((color, index) => color ? raw.set([...color.rgb, 255], index * 4) : raw.set([0, 0, 0, 0], index * 4));
   await sharp(raw, { raw: { width, height, channels: 4 } }).resize(width * options.cellPx, height * options.cellPx, { kernel: "nearest" }).png().toFile(path.join(directory, "pixel-preview.png"));
   const svg = renderSvg(cells, width, height, options.cellPx, usage);
   await writeFile(path.join(directory, "pattern.svg"), svg);
   await sharp(Buffer.from(svg)).png().toFile(path.join(directory, "pattern.png"));
-  const grid = { width, height, cells: Array.from({ length: height }, (_, y) => cells.slice(y * width, (y + 1) * width).map(color => color?.code || null)) };
-  await writeFile(path.join(directory, "grid.json"), JSON.stringify(grid, null, 2));
   await writeFile(path.join(directory, "bom.csv"), `code,hex,count\n${usage.map(item => `${item.color.code},${item.color.hex},${item.count}`).join("\n")}\n`);
-  await writeFile(path.join(directory, "config.json"), JSON.stringify({ source, style, size: options.size, maxColors: options.maxColors, background: options.background, backgroundRemovedPixels: options.backgroundRemovedPixels || 0, cellPx: options.cellPx, ai: options.ai, model: options.ai === "off" ? null : options.model, preserve: options.preserve, width, height, colors: usage.length, beads: usage.reduce((sum, item) => sum + item.count, 0), createdAt: new Date().toISOString() }, null, 2));
-  return { directory, width, height, colors: usage.length, beads: usage.reduce((sum, item) => sum + item.count, 0) };
+  const backup = await projectBackup(source, style, options, width, height, cells), projectFile = path.join(directory, backup.fileName);
+  await writeFile(projectFile, JSON.stringify(backup.value));
+  return { directory, projectFile, width, height, colors: usage.length, beads: usage.reduce((sum, item) => sum + item.count, 0) };
 }
 
 async function writeSampledPreview(directory, cells, width, height, cellPx) {

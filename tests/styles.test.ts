@@ -73,6 +73,10 @@ describe("统一图纸工作台", () => {
   });
 
   it("作品列表支持多选后统一确认删除", () => {
+    expect(home.indexOf("导入 JSON")).toBeLessThan(home.lastIndexOf("批量删除"));
+    expect(home).toContain("导入文件夹");
+    expect(home).toContain("webkitdirectory");
+    expect(home).toContain("droppedJsonFiles(event.dataTransfer)");
     expect(home).toContain("批量删除");
     expect(home).toContain("aria-pressed={selectionMode");
     expect(home).toContain("await deleteProjects([...selectedIds])");

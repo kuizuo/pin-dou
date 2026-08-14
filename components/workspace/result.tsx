@@ -1642,7 +1642,7 @@ export function Result({
                           <input
                             type="range"
                             min="16"
-                            max="104"
+                            max="192"
                             disabled={hasManualEdits}
                             value={draftSettings.longestEdge}
                             onChange={event =>
@@ -1673,7 +1673,7 @@ export function Result({
                     <input
                       type="range"
                       min="1"
-                      max="30"
+                      max="291"
                       value={draftSettings.maxColors}
                       onChange={event =>
                         scheduleAdjustments({

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createSamplePattern } from "../lib/beads";
+import { BEAD_COLORS, createSamplePattern } from "../lib/beads";
 import {
   manualBackupName,
   supportsLocalBackup,
@@ -101,6 +101,25 @@ describe("本地文件夹备份", () => {
       uncompressedSources = value.source.size * 4 / 3 * projects.length;
     expect(backup.size).toBeLessThan(uncompressedSources * 0.2);
     expect(JSON.parse(await backup.text()).sources).toHaveLength(1);
+  });
+
+  it("可完整备份并恢复 192 格与 291 色图纸", async () => {
+    const value = project(), count = 192 * 192;
+    value.settings = { ...value.settings, longestEdge: 192, maxColors: 291 };
+    value.pattern = {
+      ...value.pattern,
+      width: 192,
+      height: 192,
+      cells: Array.from({ length: count }, (_, index) =>
+        BEAD_COLORS[index % BEAD_COLORS.length].id),
+    };
+    const backup = await createBackupBlob([value]), raw = JSON.parse(await backup.text());
+    const [restored] = await readBackupProjects(
+      new File([backup], "192.pindou.json"),
+    );
+    expect(raw.projects[0].snapshots[0].c.s).toBe(2);
+    expect(restored.pattern.cells).toEqual(value.pattern.cells);
+    expect(restored.settings.maxColors).toBe(291);
   });
 
   it("继续读取旧版完整备份", async () => {

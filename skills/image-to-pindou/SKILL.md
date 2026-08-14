@@ -16,7 +16,7 @@ Run the bundled CLI from this directory. Prefer an AI-redrawn pixel source when 
 3. Use `cartoon` for flat illustrations, `bead` for general buildability, `faithful` for photographic shading, or `all` only for local comparisons. Pass each critical detail with a separate `--preserve` when using CLI AI.
 4. Inspect `ai-draft.png` when present, then `sampled-preview.png`, `pixel-preview.png`, and `pattern.png`. Finish only when the subject is recognizable at preview size, critical details survive, the background is correct, and no isolated wrong-color speckles remain.
 5. If a check fails, change one cause and rerun: revise the redraw for missing identity, increase size for lost geometry, lower the color cap for noisy shading, or switch `bead`/`cartoon` for weak contours. Reinspect all four stages after each rerun.
-6. Verify that `grid.json`, `bom.csv`, and `config.json` agree on dimensions, colors, and bead count before reporting.
+6. Verify that the `.pindou.json` project, `bom.csv`, and rendered pattern agree on dimensions, colors, and bead count before reporting.
 
 For built-in image editing, request deliberate pixel art at the target grid size, strong one-cell outlines, flat coherent color regions, a plain white outer background when removing it, and preservation of the listed details. Request no visible grid, bead circles, labels, text, gradients, blur, or added objects. The CLI enforces the exact grid locally.
 
@@ -34,6 +34,6 @@ Run `node scripts/generate.mjs --help` for limits and optional flags. Never sile
 
 Read [references/principles.md](references/principles.md) when explaining or changing the conversion method.
 
-Treat `grid.json` as the editable source of truth. `pattern.svg` is the scalable construction drawing; `bom.csv` is the purchase list. When `--style all` is used, each style receives its own output directory.
+Treat the `.pindou.json` file as the editable source of truth and mention that it can be imported into Pin Dou for further editing. `pattern.svg` is the scalable construction drawing; `bom.csv` is the purchase list. When `--style all` is used, each style receives its own output directory.
 
 Report the grid dimensions, color count, bead count, output path, and any background-removal refusal.

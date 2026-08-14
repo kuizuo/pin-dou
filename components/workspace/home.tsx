@@ -1,8 +1,11 @@
 import {
   Check,
+  ChevronDown,
   Copy,
   Eye,
   FileArchive,
+  FileJson,
+  FolderInput,
   FolderOpen,
   Grid2X2,
   ImagePlus,
@@ -30,6 +33,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -52,10 +61,33 @@ import {
   deleteProject,
   deleteProjects,
   duplicateProject,
-  importBackup,
+  importBackups,
   saveProject,
 } from "@/lib/projects";
 import { cn } from "@/lib/utils";
+
+async function entryFiles(entry: FileSystemEntry): Promise<File[]> {
+  if (entry.isFile)
+    return new Promise((resolve, reject) =>
+      (entry as FileSystemFileEntry).file(file => resolve([file]), reject));
+  const reader = (entry as FileSystemDirectoryEntry).createReader(), files: File[] = [];
+  while (true) {
+    const entries = await new Promise<FileSystemEntry[]>((resolve, reject) =>
+      reader.readEntries(resolve, reject));
+    if (!entries.length) return files;
+    files.push(...(await Promise.all(entries.map(entryFiles))).flat());
+  }
+}
+
+async function droppedJsonFiles(data: DataTransfer) {
+  const entries = [...data.items]
+    .map(item => item.webkitGetAsEntry?.())
+    .filter((entry): entry is FileSystemEntry => !!entry);
+  const files = entries.length
+    ? (await Promise.all(entries.map(entryFiles))).flat()
+    : [...data.files];
+  return files.filter(file => file.name.toLowerCase().endsWith(".json"));
+}
 
 function UploadCard({
   className,
@@ -169,8 +201,10 @@ export function Home({
   onRefresh: () => void;
 }) {
   const backup = useRef<HTMLInputElement>(null),
+    projectFolder = useRef<HTMLInputElement>(null),
     settingsButton = useRef<HTMLButtonElement>(null),
     [message, setMessage] = useState(""),
+    [importDragging, setImportDragging] = useState(false),
     [settingsOpen, setSettingsOpen] = useState(false),
     [directoryBusy, setDirectoryBusy] = useState(false),
     [backingUp, setBackingUp] = useState(false),
@@ -264,19 +298,25 @@ export function Home({
       setDirectoryBusy(false);
     }
   }
-  async function loadBackup(file?: File) {
-    if (!file) return;
+  async function loadProjects(files: File[]) {
+    if (!files.length) {
+      setMessage("没有找到可导入的图纸文件。");
+      return;
+    }
     try {
-      const count = await importBackup(file);
-      setMessage(`已恢复 ${count} 个作品。`);
+      const result = await importBackups(files);
+      setMessage(
+        `已导入 ${result.projects} 个作品${result.skipped ? `，跳过 ${result.skipped} 个无法识别的文件` : ""}。`,
+      );
       await onRefresh();
     }
     catch (error) {
-      setMessage(error instanceof Error ? error.message : "备份恢复失败。");
+      setMessage(error instanceof Error ? error.message : "图纸导入失败。");
     }
     finally {
       setSettingsOpen(false);
       if (backup.current) backup.current.value = "";
+      if (projectFolder.current) projectFolder.current.value = "";
     }
   }
   async function copy(project: Project) {
@@ -392,7 +432,45 @@ export function Home({
           onSample={onSample}
         />
       </section>
-      <section className="pt-[70px] max-[640px]:pt-11">
+      <section
+        className="relative pt-[70px] max-[640px]:pt-11"
+        onDragEnter={(event) => {
+          if (!event.dataTransfer.types.includes("Files")) return;
+          event.preventDefault();
+          setImportDragging(true);
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node))
+            setImportDragging(false);
+        }}
+        onDragOver={(event) => {
+          if (!event.dataTransfer.types.includes("Files")) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          setImportDragging(false);
+          void droppedJsonFiles(event.dataTransfer)
+            .then(loadProjects)
+            .catch(error => setMessage(
+              error instanceof Error ? error.message : "无法读取拖入的文件夹。",
+            ));
+        }}
+      >
+        {importDragging
+          ? (
+              <div className="pointer-events-none absolute inset-x-0 top-12 z-20 grid min-h-44 place-items-center rounded-[18px] border-2 border-dashed border-primary bg-background/95 text-center shadow-lg">
+                <div className="grid gap-1.5">
+                  <FolderInput className="mx-auto size-7 text-primary" />
+                  <strong>松开即可导入图纸</strong>
+                  <small className="text-muted-foreground">
+                    支持 .pindou.json 文件或文件夹
+                  </small>
+                </div>
+              </div>
+            )
+          : null}
         <div className="mb-5 flex items-end justify-between gap-6 max-[640px]:flex-col max-[640px]:items-start">
           <div>
             <span className="eyebrow">只保存在当前设备</span>
@@ -404,7 +482,18 @@ export function Home({
               type="file"
               hidden
               accept=".json,.pindou.json,application/json"
-              onChange={event => void loadBackup(event.target.files?.[0])}
+              onChange={event => void loadProjects([...(event.target.files || [])])}
+            />
+            <input
+              ref={projectFolder}
+              type="file"
+              hidden
+              multiple
+              {...{ webkitdirectory: "" }}
+              onChange={event => void loadProjects(
+                [...(event.target.files || [])].filter(file =>
+                  file.name.toLowerCase().endsWith(".pindou.json")),
+              )}
             />
             {selectionMode
               ? (
@@ -437,6 +526,25 @@ export function Home({
                 )
               : (
                   <>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                          <Upload />
+                          导入
+                          <ChevronDown />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => backup.current?.click()}>
+                          <FileJson />
+                          导入 JSON
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => projectFolder.current?.click()}>
+                          <FolderInput />
+                          导入文件夹
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button
                       variant="outline"
                       disabled={!projects.length}

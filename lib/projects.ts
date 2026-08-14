@@ -57,7 +57,7 @@ export function normalizeProject(project: Project): Project {
       ...project.settings,
       background,
       maxColors: Math.min(
-        30,
+        291,
         project.settings.maxColors ?? DEFAULT_SETTINGS.maxColors,
       ),
       colorMerge: Math.min(
@@ -223,8 +223,8 @@ const PatternSchema = z
   .object({
     id: z.string(),
     name: z.string(),
-    width: z.number().int().min(1).max(104),
-    height: z.number().int().min(1).max(104),
+    width: z.number().int().min(1).max(192),
+    height: z.number().int().min(1).max(192),
     cells: z.array(CellSchema),
     backgroundCells: z.array(CellSchema).optional(),
     createdAt: z.string(),
@@ -262,8 +262,8 @@ const VersionSchema = z.object({
   pattern: PatternSchema,
 });
 const SettingsSchema = z.object({
-  longestEdge: z.number().min(16).max(104),
-  maxColors: z.number().min(1).max(60),
+  longestEdge: z.number().min(16).max(192),
+  maxColors: z.number().min(1).max(291),
   paletteSize: z.number().min(1).max(291),
   excludedColorIds: z.array(z.string()),
   processingMode: z.enum(["edge", "dominant", "average"]),
@@ -317,12 +317,12 @@ const LegacyBackupSchema = z.object({
 
 const PackedCellsSchema = z.object({
   p: z.array(z.string()).max(291),
-  d: z.string().max(30000),
+  d: z.string().max(100000),
   s: z.union([z.literal(1), z.literal(2)]),
 });
 const CompactSnapshotSchema = z.object({
-  w: z.number().int().min(1).max(104),
-  h: z.number().int().min(1).max(104),
+  w: z.number().int().min(1).max(192),
+  h: z.number().int().min(1).max(192),
   c: PackedCellsSchema,
   b: PackedCellsSchema.optional(),
   o: z
@@ -606,7 +606,26 @@ export async function readBackupProjects(file: File) {
 }
 
 export async function importBackup(file: File) {
-  const projects = await readBackupProjects(file);
-  await saveProjects(projects);
-  return projects.length;
+  return (await importBackups([file])).projects;
+}
+
+export async function importBackups(files: File[]) {
+  const parsed = await Promise.all(files.map(async (file) => {
+      try {
+        return { projects: await readBackupProjects(file) };
+      }
+      catch (error) {
+        return { error };
+      }
+    })), valid = parsed.filter(result => "projects" in result);
+  if (!valid.length) throw parsed[0]?.error ?? new Error("没有找到可导入的图纸。");
+  const projects = new Map<string, Project>();
+  for (const result of valid)
+    for (const project of result.projects ?? []) projects.set(project.id, project);
+  await saveProjects([...projects.values()]);
+  return {
+    projects: projects.size,
+    files: valid.length,
+    skipped: parsed.length - valid.length,
+  };
 }

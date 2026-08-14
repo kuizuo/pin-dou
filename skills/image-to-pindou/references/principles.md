@@ -24,4 +24,4 @@ Request a clean pixel-art draft and enforce exact grid dimensions locally. Do no
 
 ## Palette
 
-The bundled palette contains 291 MARD colors sourced from `maxcleme/beadcolors` commit `29229889daab404fb30531d4bb785fd73f7f58e3` (MIT). A custom CSV may provide `code,r,g,b` or `code,hex` columns.
+The bundled palette contains 291 MARD colors. A custom CSV may select a subset with `code,r,g,b` or `code,hex` columns; codes and colors must match the bundled palette so projects remain editable after import.
