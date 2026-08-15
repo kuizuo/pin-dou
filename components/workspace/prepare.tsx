@@ -3,7 +3,6 @@
 import {
   ArrowLeft,
   CircleAlert,
-  Crop as CropIcon,
   FlipHorizontal,
   FlipVertical,
   ImageIcon,
@@ -204,7 +203,7 @@ function CropPreview({
       {preview && frame.width
         ? (
             <ReactCrop
-              className="crop-frame rounded-lg border border-[#b9aeb2] bg-card shadow-[0_18px_45px_rgb(65_37_49/0.18)] [&_img]:block [&_img]:size-full"
+              className="crop-frame select-none rounded-lg border border-[#b9aeb2] bg-card shadow-[0_18px_45px_rgb(65_37_49/0.18)] [&_img]:block [&_img]:size-full"
               style={frame}
               crop={crop}
               aspect={aspect}
@@ -583,13 +582,15 @@ export function Prepare({
                 复原
               </Button>
             </div>
-            <div className="flex items-center justify-between gap-2.5 max-[801px]:flex-col max-[801px]:items-stretch">
+            <div className="grid gap-2 border-b border-border pb-2.5">
               <div
-                className="flex min-w-0 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:min-h-11 [&>*]:flex-none [&>button.active]:border-primary! [&>button.active]:bg-accent! [&>button.active]:text-accent-foreground! [&_[data-slot=button]]:border-border! [&_[data-slot=button]]:bg-muted! [&_[data-slot=button]]:text-foreground! max-[641px]:grid max-[641px]:w-full max-[641px]:grid-cols-2 max-[641px]:gap-1 max-[641px]:overflow-visible max-[641px]:p-0 max-[641px]:[&>*]:w-full max-[641px]:[&>*]:min-w-0 max-[641px]:[&>*]:gap-1 max-[641px]:[&>*]:px-1 max-[641px]:[&>*]:text-xs max-[360px]:[&_svg]:hidden"
+                className="grid w-full grid-cols-6 gap-1.5 [&>button.active]:border-primary! [&>button.active]:bg-accent! [&>button.active]:text-accent-foreground! [&_[data-slot=button]]:h-9 [&_[data-slot=button]]:min-h-9 [&_[data-slot=button]]:w-full [&_[data-slot=button]]:border-border! [&_[data-slot=button]]:bg-muted! [&_[data-slot=button]]:px-0! [&_[data-slot=button]]:text-foreground! [&_[data-slot=button]_svg]:size-4"
                 aria-label="图片方向与裁切比例"
               >
                 <Button
                   variant="workbench"
+                  size="icon"
+                  aria-label="旋转"
                   onClick={() =>
                     setDraft({
                       ...draft,
@@ -601,10 +602,11 @@ export function Prepare({
                     })}
                 >
                   <RotateCw />
-                  旋转
                 </Button>
                 <Button
                   variant="workbench"
+                  size="icon"
+                  aria-label="水平翻转"
                   onClick={() =>
                     setDraft({
                       ...draft,
@@ -612,10 +614,11 @@ export function Prepare({
                     })}
                 >
                   <FlipHorizontal />
-                  水平翻转
                 </Button>
                 <Button
                   variant="workbench"
+                  size="icon"
+                  aria-label="垂直翻转"
                   onClick={() =>
                     setDraft({
                       ...draft,
@@ -623,32 +626,56 @@ export function Prepare({
                     })}
                 >
                   <FlipVertical />
-                  垂直翻转
                 </Button>
                 <Button
                   className={cropAspect === 1 ? "active" : ""}
                   variant="workbench"
+                  size="icon"
+                  aria-label="1:1 裁切"
                   aria-pressed={cropAspect === 1}
                   onClick={() =>
                     setCropAspect(current => current === 1 ? undefined : 1)}
                 >
-                  <CropIcon />
-                  1:1 裁切
+                  <span className="text-[10px] font-bold leading-none">1:1</span>
+                </Button>
+                <Button
+                  className={cropAspect === 3 / 4 ? "active" : ""}
+                  variant="workbench"
+                  size="icon"
+                  aria-label="3:4 裁切"
+                  aria-pressed={cropAspect === 3 / 4}
+                  onClick={() =>
+                    setCropAspect(current =>
+                      current === 3 / 4 ? undefined : 3 / 4)}
+                >
+                  <span className="text-[10px] font-bold leading-none">3:4</span>
+                </Button>
+                <Button
+                  className={cropAspect === 4 / 3 ? "active" : ""}
+                  variant="workbench"
+                  size="icon"
+                  aria-label="4:3 裁切"
+                  aria-pressed={cropAspect === 4 / 3}
+                  onClick={() =>
+                    setCropAspect(current =>
+                      current === 4 / 3 ? undefined : 4 / 3)}
+                >
+                  <span className="text-[10px] font-bold leading-none">4:3</span>
                 </Button>
               </div>
-              <fieldset className="m-0 flex min-w-0 items-center justify-end gap-2 border-0 p-0 max-[801px]:w-full max-[801px]:justify-end max-[640px]:grid max-[640px]:grid-cols-2 max-[640px]:gap-1.5">
+              <fieldset className="m-0 grid grid-cols-2 gap-1.5 border-0 p-0">
                 <legend className="sr-only">生成方式</legend>
                 <button
                   type="button"
                   aria-pressed={!aiMode}
-                  className={`inline-flex h-11 items-center justify-center rounded-[10px] border px-4 font-[750] whitespace-nowrap max-[640px]:px-2 max-[640px]:text-xs ${!aiMode ? "border-primary bg-accent text-accent-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary),transparent_35%)]" : "border-border bg-muted text-foreground"}`}
+                  className={`inline-flex h-10 w-full items-center justify-center rounded-[10px] border px-3 text-sm font-[750] whitespace-nowrap ${!aiMode ? "border-primary bg-accent text-accent-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary),transparent_35%)]" : "border-border bg-muted text-foreground"}`}
                   onClick={() => chooseMode("local")}
                 >
                   本地处理
                 </button>
-                <div className="flex h-11 min-w-0 overflow-hidden rounded-[10px] border border-border bg-muted text-foreground [&_button]:inline-flex [&_button]:h-full [&_button]:items-center [&_button]:justify-center [&_button]:gap-1.5 [&_button]:px-3 [&_button]:font-[750] [&_button]:whitespace-nowrap [&_svg]:size-4 max-[640px]:[&_button]:px-2 max-[640px]:[&_button]:text-xs">
+                <div className={`flex h-10 min-w-0 overflow-hidden rounded-[10px] border bg-muted text-foreground [&_button]:inline-flex [&_button]:h-full [&_button]:items-center [&_button]:justify-center [&_button]:gap-1.5 [&_button]:px-3 [&_button]:text-sm [&_button]:font-[750] [&_button]:whitespace-nowrap [&_svg]:size-4 ${aiMode ? "border-primary" : "border-border"}`}>
                   <button
-                    className={`flex-1 ${aiMode ? "bg-accent text-accent-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary),transparent_35%)]" : ""}`}
+                    className={`min-w-0 flex-1 ${aiMode ? "bg-accent text-accent-foreground" : ""}`}
                     type="button"
                     aria-pressed={aiMode}
                     onClick={() => chooseMode("ai")}
@@ -657,7 +684,7 @@ export function Prepare({
                     AI 处理
                   </button>
                   <button
-                    className="flex-none border-l border-border"
+                    className="flex-none"
                     type="button"
                     aria-label={`AI 设置，当前使用 ${AI_PROVIDER_NAMES[aiProvider]}`}
                     onClick={() => setAiSettingsOpen(true)}
