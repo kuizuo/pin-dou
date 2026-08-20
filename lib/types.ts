@@ -15,6 +15,24 @@ export type SourceVariant
     | "ai-cartoon"
     | "ai-realistic";
 
+export type CardPreset = {
+  id: "standard-card";
+  name: string;
+  width: number;
+  height: number;
+  description: string;
+};
+
+export const CARD_PRESETS: CardPreset[] = [
+  {
+    id: "standard-card",
+    name: "银行卡 / 身份证",
+    width: 17,
+    height: 11,
+    description: "17 × 11 格 · 约 85.6 × 54 mm",
+  },
+];
+
 export type SourceTransform = {
   rotation: 0 | 90 | 180 | 270;
   flipX: boolean;

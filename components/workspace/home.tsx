@@ -2,6 +2,7 @@ import {
   Check,
   ChevronDown,
   Copy,
+  CreditCard,
   Eye,
   FileArchive,
   FileJson,
@@ -17,10 +18,10 @@ import {
   Upload,
 } from "lucide-react";
 import { useRef, useState } from "react";
-import type { Project } from "@/lib/types";
 import { UploadCard } from "@/components/new-project-dialog";
 import { PatternCanvas } from "@/components/pattern-canvas";
 import { PatternPreviewDialog } from "@/components/pattern-preview-dialog";
+import { TextPatternDialog } from "@/components/text-pattern-form";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,8 +63,10 @@ import {
   deleteProjects,
   duplicateProject,
   importBackups,
+  readBackupProjects,
   saveProject,
 } from "@/lib/projects";
+import { CARD_PRESETS, type CardPreset, type Pattern, type Project } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 async function entryFiles(entry: FileSystemEntry): Promise<File[]> {
@@ -94,6 +97,8 @@ export function Home({
   localBackupSupported,
   projects,
   onBackupStatusChange,
+  onCreateCard,
+  onCreatePattern,
   onFile,
   onSample,
   onOpen,
@@ -103,6 +108,8 @@ export function Home({
   localBackupSupported: boolean;
   projects: Project[];
   onBackupStatusChange: (status: LocalBackupStatus) => void;
+  onCreateCard: (preset: CardPreset) => void;
+  onCreatePattern: (pattern: Pattern) => void;
   onFile: (file?: File) => void;
   onSample: () => void;
   onOpen: (project: Project) => void;
@@ -111,6 +118,8 @@ export function Home({
   const backup = useRef<HTMLInputElement>(null),
     projectFolder = useRef<HTMLInputElement>(null),
     settingsButton = useRef<HTMLButtonElement>(null),
+    [creationTab, setCreationTab] = useState<"image" | "card" | "text" | "emoji">("image"),
+    [cardSampleBusy, setCardSampleBusy] = useState(false),
     [message, setMessage] = useState(""),
     [importDragging, setImportDragging] = useState(false),
     [settingsOpen, setSettingsOpen] = useState(false),
@@ -206,6 +215,40 @@ export function Home({
       setDirectoryBusy(false);
     }
   }
+  async function openCardSample() {
+    setCardSampleBusy(true);
+    try {
+      const response = await fetch("/samples/sample-card.pindou.json");
+      if (!response.ok) throw new Error();
+      const file = new File([await response.blob()], "sample-card.pindou.json", {
+        type: "application/json",
+      });
+      const [sample] = await readBackupProjects(file);
+      if (!sample) throw new Error();
+      const now = new Date().toISOString();
+      const project = {
+        ...sample,
+        id: crypto.randomUUID(),
+        createdAt: now,
+        updatedAt: now,
+        pattern: {
+          ...sample.pattern,
+          id: crypto.randomUUID(),
+          createdAt: now,
+        },
+      };
+      await saveProject(project);
+      await onRefresh();
+      onOpen(project);
+    }
+    catch {
+      setMessage("示例图纸无法打开，请稍后再试。");
+    }
+    finally {
+      setCardSampleBusy(false);
+    }
+  }
+
   async function loadProjects(files: File[]) {
     if (!files.length) {
       setMessage("没有找到可导入的图纸文件。");
@@ -309,21 +352,83 @@ export function Home({
       setBatchDeleting(false);
     }
   }
+  const creationTabs = [
+    { id: "image", label: "图片转图纸", disabled: false },
+    { id: "card", label: "卡片风格", disabled: false },
+    { id: "text", label: "文字转图纸", disabled: false },
+    { id: "emoji", label: "Emoji 转图纸", disabled: false },
+  ] as const;
   return (
     <main className="workspace home-page max-[641px]:w-[calc(100%-20px)]! max-[641px]:pt-2.5!">
+      <div
+        className="mb-4 flex w-fit rounded-[14px] border border-border bg-muted p-1"
+        role="tablist"
+        aria-label="新建图纸方式"
+      >
+        {creationTabs.map(tab => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            disabled={tab.disabled}
+            aria-selected={creationTab === tab.id}
+            aria-disabled={tab.disabled}
+            title={tab.disabled ? "即将上线" : undefined}
+            onClick={() => {
+              if (!tab.disabled) setCreationTab(tab.id);
+            }}
+            className={cn(
+              "min-h-9 cursor-pointer rounded-[10px] px-4 text-[0.8rem] font-bold transition-colors",
+              tab.disabled
+                ? "cursor-not-allowed text-muted-foreground/50"
+                : creationTab === tab.id
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
       <section className="grid min-h-[520px] grid-cols-[1.05fr_0.8fr] items-center gap-[clamp(28px,6vw,80px)] overflow-hidden rounded-[28px] border border-border [background:radial-gradient(circle_at_90%_5%,#e5f8fb_0,transparent_32%),radial-gradient(circle_at_5%_90%,#fde6f0_0,transparent_32%),var(--card)] p-[clamp(28px,5vw,70px)] shadow-[0_20px_60px_rgb(24_34_53/0.07)] max-[901px]:grid-cols-[1fr_340px] max-[641px]:min-h-0 max-[641px]:grid-cols-1 max-[641px]:gap-[22px] max-[641px]:rounded-[19px] max-[641px]:px-4 max-[641px]:pt-7 max-[641px]:pb-4">
         <div>
-          <span className="eyebrow">MARD 291 色 · AI 生成图纸</span>
+          <span className="eyebrow">
+            {creationTab === "image"
+              ? "MARD 291 色 · AI 生成图纸"
+              : creationTab === "card"
+                ? "MARD 291 色 · 标准卡面图纸"
+                : creationTab === "text"
+                  ? "MARD 291 色 · 像素文字"
+                  : "MARD 291 色 · 彩色 Emoji"}
+          </span>
           <h1 className="mt-3 mb-[18px] max-w-[680px] text-[clamp(2.2rem,5.4vw,4.2rem)] leading-[1.02] tracking-[-0.055em] max-[640px]:text-[2.5rem]">
-            一张照片，变成真正能照着拼的图纸
+            {creationTab === "image"
+              ? "一张照片，变成真正能照着拼的图纸"
+              : creationTab === "card"
+                ? "用标准卡面尺寸，直接开始拼"
+                : creationTab === "text"
+                  ? "把喜欢的字，直接变成拼豆图纸"
+                  : "把一个 Emoji，变成彩色拼豆图纸"}
           </h1>
           <p className="max-w-[600px] text-[1.05rem] leading-[1.8] text-muted-foreground max-[640px]:text-[0.9rem]">
-            先把照片整理成清晰图纸，再减少零碎颜色并放到合适的豆板上。也可以直接使用原图。
+            {creationTab === "image"
+              ? "先把照片整理成清晰图纸，再减少零碎颜色并放到合适的豆板上。也可以直接使用原图。"
+              : creationTab === "card"
+                ? "选择银行卡或身份证尺寸，创建空白图纸后直接在网格里画。"
+                : creationTab === "text"
+                  ? "输入 1–5 个字符，选择横排或竖排、粗细和颜色，确认预览后开始拼。"
+                  : "输入一个 Emoji，保留它在当前设备上的样子，并自动匹配为最多 12 种豆色。"}
           </p>
           <div className="mt-7 flex flex-wrap gap-x-5 gap-y-3 text-[0.82rem] font-bold max-[640px]:mt-[18px] max-[640px]:grid">
             <span className="flex items-center gap-[5px] [&_svg]:w-[17px] [&_svg]:text-success">
               <Check />
-              白色豆与空白格分开
+              {creationTab === "image"
+                ? "白色豆与空白格分开"
+                : creationTab === "card"
+                  ? "标准卡面尺寸"
+                  : creationTab === "text"
+                    ? "1–5 个字符"
+                    : "一个彩色 Emoji"}
             </span>
             <span className="flex items-center gap-[5px] [&_svg]:w-[17px] [&_svg]:text-success">
               <Check />
@@ -335,10 +440,52 @@ export function Home({
             </span>
           </div>
         </div>
-        <UploadCard
-          onFile={onFile}
-          onSample={onSample}
-        />
+        {creationTab === "image"
+          ? (
+              <UploadCard
+                onFile={onFile}
+                onSample={onSample}
+              />
+            )
+          : creationTab === "card"
+            ? (
+                <div className="grid gap-3">
+                  {CARD_PRESETS.map(preset => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      className="group flex min-h-[160px] cursor-pointer items-center gap-5 rounded-[22px] border border-border bg-workbench p-5 text-left text-workbench-foreground shadow-[0_26px_45px_rgb(24_34_53/0.16)] transition-colors hover:border-primary"
+                      onClick={() => onCreateCard(preset)}
+                    >
+                      <span className="grid size-[62px] shrink-0 place-items-center rounded-[18px] bg-primary text-white">
+                        <CreditCard size={30} />
+                      </span>
+                      <span className="grid gap-1.5">
+                        <strong className="text-[1.15rem]">{preset.name}</strong>
+                        <small className="text-workbench-muted">
+                          {preset.description}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    disabled={cardSampleBusy}
+                    onClick={() => void openCardSample()}
+                  >
+                    <Grid2X2 />
+                    使用示例图纸
+                  </Button>
+                </div>
+              )
+            : (
+                <TextPatternDialog
+                  key={creationTab}
+                  mode={creationTab}
+                  onCreate={onCreatePattern}
+                />
+              )}
       </section>
       <section
         className="relative pt-[70px] max-[640px]:pt-11"

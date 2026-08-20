@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 4,
+  "exportedAt": "2026-08-17T00:00:00.000Z",
+  "sources": [
+    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNyIgaGVpZ2h0PSIxMSIgdmlld0JveD0iMCAwIDE3IDExIj48cmVjdCB3aWR0aD0iMTciIGhlaWdodD0iMTEiIGZpbGw9IndoaXRlIi8+PHJlY3QgeD0iLjUiIHk9Ii41IiB3aWR0aD0iMTYiIGhlaWdodD0iMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iYmxhY2siLz48cGF0aCBmaWxsPSIjZjU1MWEyIiBkPSJNOC41IDguNiA0LjMgNC43QTIuMzUgMi4zNSAwIDAgMSA3LjYgMS40TDguNSAyLjNsLjktLjlhMi4zNSAyLjM1IDAgMCAxIDMuMyAzLjNaIi8+PC9zdmc+"
+  ],
+  "projects": [
+    {
+      "id": "sample-standard-card",
+      "name": "爱心卡片示例图纸",
+      "createdAt": "2026-08-17T00:00:00.000Z",
+      "updatedAt": "2026-08-17T00:00:00.000Z",
+      "sourceName": "爱心卡片示例图纸",
+      "source": 0,
+      "transform": {
+        "rotation": 0,
+        "flipX": false,
+        "flipY": false,
+        "zoom": 1,
+        "offsetX": 0,
+        "offsetY": 0
+      },
+      "settings": {
+        "longestEdge": 17,
+        "maxColors": 12,
+        "paletteSize": 291,
+        "excludedColorIds": [],
+        "processingMode": "edge",
+        "colorMerge": 5,
+        "background": "plain",
+        "mirror": false,
+        "mode": "local"
+      },
+      "pattern": {
+        "id": "sample-standard-card-pattern",
+        "name": "爱心卡片示例图纸",
+        "createdAt": "2026-08-17T00:00:00.000Z",
+        "snapshot": {
+          "w": 17,
+          "h": 11,
+          "c": {
+            "p": [
+              "H7",
+              "T1",
+              "E5"
+            ],
+            "d": "AQEBAQEBAQEBAQEBAQEBAQEBAgICAgICAgICAgICAgICAQECAgICAwMCAgICAwMCAgIBAQICAgMDAwICAgMDAwICAgEBAgICAwMDAwMDAwMDAgICAQECAgICAwMDAwMDAwICAgIBAQICAgICAwMDAwMCAgICAgEBAgICAgICAwMDAgICAgICAQECAgICAgICAwICAgICAgIBAQICAgICAgICAgICAgICAgEBAQEBAQEBAQEBAQEBAQEBAQ==",
+            "s": 1
+          }
+        }
+      }
+    }
+  ]
+}

@@ -3,7 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { Pattern } from "@/lib/types";
 import { beadById } from "@/lib/beads";
-import { drawPatternGrid, patternGridMarks } from "@/lib/pattern";
+import {
+  drawPatternGrid,
+  needsLightBeadOutline,
+  visiblePatternGridMarks,
+} from "@/lib/pattern";
 
 type Props = {
   pattern: Pattern;
@@ -28,12 +32,26 @@ type AxisProps = {
 
 export function PatternGridAxis({ side, size }: AxisProps) {
   const horizontal = side === "top" || side === "bottom";
+  const ref = useRef<HTMLDivElement>(null);
+  const [length, setLength] = useState(0);
+
+  useEffect(() => {
+    const axis = ref.current;
+    if (!axis) return;
+    const updateLength = () => setLength(horizontal ? axis.clientWidth : axis.clientHeight);
+    updateLength();
+    const observer = new ResizeObserver(updateLength);
+    observer.observe(axis);
+    return () => observer.disconnect();
+  }, [horizontal]);
+
   return (
     <div
+      ref={ref}
       className={`pattern-grid-axis is-${side}`}
       aria-hidden="true"
     >
-      {patternGridMarks(size).map(mark => (
+      {visiblePatternGridMarks(size, length).map(mark => (
         <span
           key={mark}
           style={horizontal
@@ -109,7 +127,7 @@ export function PatternCanvas({
         else {
           context.fillRect(x, y, cell, cell);
         }
-        if (!showCodes && bead.rgb.every(channel => channel >= 235)) {
+        if (needsLightBeadOutline(bead.rgb, showCodes, showGrid)) {
           context.strokeStyle = "#b9c0cc";
           context.lineWidth = 1;
           if (shape === "circle") context.stroke();

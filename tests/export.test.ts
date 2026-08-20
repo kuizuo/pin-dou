@@ -6,9 +6,11 @@ import {
   copyPatternPng,
   cropAreaPixels,
   downloadPatternPng,
+  needsLightBeadOutline,
   patternGridMarks,
   renderPattern,
   sharePatternPng,
+  visiblePatternGridMarks,
 } from "../lib/pattern";
 
 describe("图纸 PNG 导出", () => {
@@ -21,6 +23,11 @@ describe("图纸 PNG 导出", () => {
     expect(patternGridMarks(1)).toEqual([1]);
     expect(patternGridMarks(31)).toEqual([1, 10, 20, 30, 31]);
     expect(patternGridMarks(104)).toEqual([1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 104]);
+  });
+
+  it("刻度重叠时保留最后一格", () => {
+    expect(visiblePatternGridMarks(11, 110)).toEqual([1, 11]);
+    expect(visiblePatternGridMarks(31, 558)).toEqual([1, 10, 20, 30, 31]);
   });
 
   it("施工图可附带颜色用量", () => {
@@ -174,6 +181,12 @@ describe("图纸 PNG 导出", () => {
       [49, 77, 727, 77],
       [49, 109, 727, 109],
     ]);
+  });
+
+  it("显示网格时，白色豆不再额外描边", () => {
+    expect(needsLightBeadOutline([255, 255, 255], false, true)).toBe(false);
+    expect(needsLightBeadOutline([255, 255, 255], false, false)).toBe(true);
+    expect(needsLightBeadOutline([245, 81, 162], false, false)).toBe(false);
   });
 
   it("生成 PNG 后触发下载", async () => {

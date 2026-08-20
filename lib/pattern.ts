@@ -747,11 +747,35 @@ export function drawPatternGrid(
   context.stroke();
 }
 
+export function needsLightBeadOutline(
+  rgb: [number, number, number],
+  showCodes: boolean,
+  showGrid: boolean,
+) {
+  return !showCodes && !showGrid && rgb.every(channel => channel >= 235);
+}
+
 export function patternGridMarks(size: number) {
   const marks = [1];
   for (let mark = 10; mark < size; mark += 10) marks.push(mark);
   if (size > 1) marks.push(size);
   return marks;
+}
+
+export function visiblePatternGridMarks(size: number, length: number) {
+  const marks = patternGridMarks(size);
+  if (!length) return marks;
+
+  return marks.reduce<number[]>((visible, mark) => {
+    const previous = visible.at(-1);
+    const distance = previous === undefined
+      ? Infinity
+      : ((mark - previous) / size) * length;
+    const requiredSpace = (String(previous).length + String(mark).length) * 3 + 4;
+    if (distance < requiredSpace) visible.pop();
+    visible.push(mark);
+    return visible;
+  }, []);
 }
 
 export function renderPattern(pattern: Pattern, includeLegend = true) {

@@ -3,7 +3,7 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { LoaderCircle } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Project } from "@/lib/types";
+import type { Pattern, Project } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { useNewProjectDialog } from "@/components/new-project-dialog";
 import {
@@ -42,6 +42,7 @@ import {
 } from "@/lib/pattern";
 import { deleteProject, listProjects, saveProject } from "@/lib/projects";
 import {
+  type CardPreset,
   DEFAULT_SETTINGS,
   DEFAULT_TRANSFORM,
   type GenerationMode,
@@ -301,6 +302,84 @@ export function Workspace({
     }
   }, [draft, preferredMode, samples]);
 
+  async function createCardProject(preset: CardPreset) {
+    const now = new Date().toISOString();
+    const pattern: Pattern = {
+      id: crypto.randomUUID(),
+      name: preset.name,
+      width: preset.width,
+      height: preset.height,
+      cells: Array(preset.width * preset.height).fill(null),
+      createdAt: now,
+    };
+    const project: Project = {
+      backgroundRemoved: false,
+      createdAt: now,
+      id: crypto.randomUUID(),
+      name: preset.name,
+      pattern,
+      settings: {
+        ...DEFAULT_SETTINGS,
+        longestEdge: Math.max(preset.width, preset.height),
+        background: "keep",
+        mode: "local",
+      },
+      source: new Blob(
+        [
+          "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"></svg>",
+        ],
+        { type: "image/svg+xml" },
+      ),
+      sourceName: preset.name,
+      sourceType: "image/svg+xml",
+      sourceVariant: "original",
+      transform: { ...DEFAULT_TRANSFORM },
+      updatedAt: now,
+    };
+    await saveProject(project);
+    setCurrent(project);
+    setDraft(null);
+    await refresh();
+    setStage("result");
+    setPath(projectPath(project.id));
+    setMessage("");
+    setAiCandidates([]);
+    setAiFailures([]);
+    window.scrollTo(0, 0);
+  }
+
+  async function createPatternProject(pattern: Pattern) {
+    const now = new Date().toISOString();
+    const project: Project = {
+      backgroundRemoved: false,
+      createdAt: now,
+      id: crypto.randomUUID(),
+      name: pattern.name,
+      pattern: { ...pattern, createdAt: now },
+      settings: {
+        ...DEFAULT_SETTINGS,
+        longestEdge: Math.max(pattern.width, pattern.height),
+        background: "keep",
+        mode: "local",
+      },
+      source: new Blob(
+        ["<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"></svg>"],
+        { type: "image/svg+xml" },
+      ),
+      sourceName: pattern.name,
+      sourceType: "image/svg+xml",
+      sourceVariant: "original",
+      transform: { ...DEFAULT_TRANSFORM },
+      updatedAt: now,
+    };
+    await saveProject(project);
+    setCurrent(project);
+    await refresh();
+    setStage("result");
+    setPath(projectPath(project.id));
+    window.scrollTo(0, 0);
+  }
+
   useEffect(() => {
     if (
       !newProjectRequest
@@ -548,6 +627,8 @@ export function Workspace({
         <Home
           backupStatus={backupStatus}
           localBackupSupported={localBackupSupported}
+          onCreateCard={preset => void createCardProject(preset)}
+          onCreatePattern={pattern => void createPatternProject(pattern)}
           onFile={file => void chooseFile(file)}
           onBackupStatusChange={setBackupStatus}
           onOpen={openProject}

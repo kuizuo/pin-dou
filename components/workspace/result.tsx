@@ -547,6 +547,7 @@ export function Result({
   onDelete: () => Promise<void>;
   onPendingChange: (pending: boolean) => void;
 }) {
+  const isBlankCard = !project.pattern.contentBounds;
   const [pattern, setPattern] = useState(project.pattern);
   const [hasManualEdits, setHasManualEdits] = useState(false);
   const [tool, setTool] = useState<WorkbenchTool>("hand");
@@ -637,6 +638,7 @@ export function Result({
     [],
   );
   useEffect(() => {
+    if (!projectRef.current.pattern.contentBounds) return;
     let cancelled = false;
     void generatedProjectPattern(projectRef.current)
       .then(({ pattern: generated }) => {
@@ -1589,133 +1591,137 @@ export function Result({
                   <strong>实际图案尺寸</strong>
                   <output>{physicalSize ? `约 ${physicalSize}` : "暂无图案内容"}</output>
                 </div>
-                <div className="panel-switches">
-                  <div className="panel-switch-row">
-                    <strong>去除纯色背景</strong>
-                    <Switch
-                      aria-label="去除纯色背景"
-                      checked={draftSettings.background === "plain"}
-                      onCheckedChange={checked =>
+                {!isBlankCard && (
+                  <>
+                    <div className="panel-switches">
+                      <div className="panel-switch-row">
+                        <strong>去除纯色背景</strong>
+                        <Switch
+                          aria-label="去除纯色背景"
+                          checked={draftSettings.background === "plain"}
+                          onCheckedChange={checked =>
+                            scheduleAdjustments({
+                              ...draftSettingsRef.current,
+                              background: checked ? "plain" : "keep",
+                            })}
+                        />
+                      </div>
+                      <div className="panel-switch-row">
+                        <strong>水平镜像</strong>
+                        <Switch
+                          aria-label="水平镜像图纸"
+                          checked={draftSettings.mirror}
+                          onCheckedChange={checked =>
+                            scheduleAdjustments({
+                              ...draftSettingsRef.current,
+                              mirror: checked,
+                            })}
+                        />
+                      </div>
+                    </div>
+                    <PresetNumberControl
+                      key={`${draftSettings.longestEdge}-${pendingLongestEdge ?? "idle"}`}
+                      label="豆板格数"
+                      min={16}
+                      max={192}
+                      suffix="格"
+                      presets={[29, 52, 78, 104]}
+                      value={draftSettings.longestEdge}
+                      onChange={requestLongestEdge}
+                    />
+                    <PresetNumberControl
+                      label="颜色上限"
+                      min={1}
+                      max={291}
+                      suffix="色"
+                      presets={[8, 12, 16, 20]}
+                      value={draftSettings.maxColors}
+                      onChange={maxColors =>
                         scheduleAdjustments({
                           ...draftSettingsRef.current,
-                          background: checked ? "plain" : "keep",
+                          maxColors,
                         })}
                     />
-                  </div>
-                  <div className="panel-switch-row">
-                    <strong>水平镜像</strong>
-                    <Switch
-                      aria-label="水平镜像图纸"
-                      checked={draftSettings.mirror}
-                      onCheckedChange={checked =>
-                        scheduleAdjustments({
-                          ...draftSettingsRef.current,
-                          mirror: checked,
-                        })}
-                    />
-                  </div>
-                </div>
-                <PresetNumberControl
-                  key={`${draftSettings.longestEdge}-${pendingLongestEdge ?? "idle"}`}
-                  label="豆板格数"
-                  min={16}
-                  max={192}
-                  suffix="格"
-                  presets={[29, 52, 78, 104]}
-                  value={draftSettings.longestEdge}
-                  onChange={requestLongestEdge}
-                />
-                <PresetNumberControl
-                  label="颜色上限"
-                  min={1}
-                  max={291}
-                  suffix="色"
-                  presets={[8, 12, 16, 20]}
-                  value={draftSettings.maxColors}
-                  onChange={maxColors =>
-                    scheduleAdjustments({
-                      ...draftSettingsRef.current,
-                      maxColors,
-                    })}
-                />
-                <label className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!">
-                  <span>
-                    颜色合并程度
-                    <output>{draftSettings.colorMerge}</output>
-                  </span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="30"
-                    value={draftSettings.colorMerge}
-                    onChange={event =>
-                      scheduleAdjustments({
-                        ...draftSettingsRef.current,
-                        colorMerge: Number(event.target.value),
-                      })}
-                  />
-                  <small>
-                    <span>0 · 保留细节</span>
-                    <span>30 · 大幅简化</span>
-                  </small>
-                </label>
-                <fieldset>
-                  <legend>
-                    处理模式
-                    <Button
-                      className="float-right -mt-1 min-h-6! text-muted-foreground"
-                      variant="ghost"
-                      size="xs"
-                      aria-label="查看处理模式说明"
-                      onClick={() => setProcessingGuideOpen(true)}
-                    >
-                      说明
-                      <CircleHelp />
-                    </Button>
-                  </legend>
-                  <div className="panel-processing-modes max-[641px]:[&_button]:min-h-[52px]!">
-                    {(
-                      [
-                        {
-                          id: "edge",
-                          title: "轮廓增强",
-                          description: "平滑杂色，突出轮廓",
-                        },
-                        {
-                          id: "average",
-                          title: "自然平均",
-                          description: "保留渐变与光影",
-                        },
-                        {
-                          id: "dominant",
-                          title: "纯色块",
-                          description: "每块采用主要颜色",
-                        },
-                      ] as const
-                    ).map(item => (
-                      <button
-                        type="button"
-                        key={item.id}
-                        className={
-                          draftSettings.processingMode === item.id
-                            ? "active"
-                            : ""
-                        }
-                        aria-pressed={
-                          draftSettings.processingMode === item.id
-                        }
-                        onClick={() =>
+                    <label className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!">
+                      <span>
+                        颜色合并程度
+                        <output>{draftSettings.colorMerge}</output>
+                      </span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="30"
+                        value={draftSettings.colorMerge}
+                        onChange={event =>
                           scheduleAdjustments({
                             ...draftSettingsRef.current,
-                            processingMode: item.id,
+                            colorMerge: Number(event.target.value),
                           })}
-                      >
-                        <strong>{item.title}</strong>
-                        <small>{item.description}</small>
-                      </button>
-                    ))}
-                  </div>
-                </fieldset>
+                      />
+                      <small>
+                        <span>0 · 保留细节</span>
+                        <span>30 · 大幅简化</span>
+                      </small>
+                    </label>
+                    <fieldset>
+                      <legend>
+                        处理模式
+                        <Button
+                          className="float-right -mt-1 min-h-6! text-muted-foreground"
+                          variant="ghost"
+                          size="xs"
+                          aria-label="查看处理模式说明"
+                          onClick={() => setProcessingGuideOpen(true)}
+                        >
+                          说明
+                          <CircleHelp />
+                        </Button>
+                      </legend>
+                      <div className="panel-processing-modes max-[641px]:[&_button]:min-h-[52px]!">
+                        {(
+                          [
+                            {
+                              id: "edge",
+                              title: "轮廓增强",
+                              description: "平滑杂色，突出轮廓",
+                            },
+                            {
+                              id: "average",
+                              title: "自然平均",
+                              description: "保留渐变与光影",
+                            },
+                            {
+                              id: "dominant",
+                              title: "纯色块",
+                              description: "每块采用主要颜色",
+                            },
+                          ] as const
+                        ).map(item => (
+                          <button
+                            type="button"
+                            key={item.id}
+                            className={
+                              draftSettings.processingMode === item.id
+                                ? "active"
+                                : ""
+                            }
+                            aria-pressed={
+                              draftSettings.processingMode === item.id
+                            }
+                            onClick={() =>
+                              scheduleAdjustments({
+                                ...draftSettingsRef.current,
+                                processingMode: item.id,
+                              })}
+                          >
+                            <strong>{item.title}</strong>
+                            <small>{item.description}</small>
+                          </button>
+                        ))}
+                      </div>
+                    </fieldset>
+                  </>
+                )}
                 <fieldset className="panel-palette">
                   <legend>
                     调色盘
@@ -1757,15 +1763,17 @@ export function Result({
                     </div>
                   </div>
                 </fieldset>
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => void openComparison()}
-                >
-                  <Columns2 />
-                  对比原图
-                </Button>
+                {!isBlankCard && (
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => void openComparison()}
+                  >
+                    <Columns2 />
+                    对比原图
+                  </Button>
+                )}
                 <Button
                   className="w-full"
                   variant="destructive"
