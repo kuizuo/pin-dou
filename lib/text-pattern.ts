@@ -1,5 +1,5 @@
 import type { Pattern } from "./types";
-import { BEAD_COLORS } from "./beads";
+import { CORE_BEAD_COLORS } from "./beads";
 import { imageDataToCells } from "./pattern";
 
 export type TextDirection = "horizontal" | "vertical";
@@ -167,6 +167,6 @@ export function createEmojiPattern(value: string, requestedSize: number) {
     emoji,
     size,
     size,
-    imageDataToCells(sampled, size, size, 12, "edge", BEAD_COLORS, 5),
+    imageDataToCells(sampled, size, size, 12, "edge", CORE_BEAD_COLORS, 5),
   );
 }

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PIXEL_ART_PROMPT } from "../app/api/gemini/image/route";
-import { aiOutputSize, restoreSourceColors } from "../lib/ai";
+import { aiOutputSize, restoreSourceColors, snapAiPixelGrid } from "../lib/ai";
 import { isFreeQuotaError } from "../worker/src/index";
 
 describe("AI 图片尺寸", () => {
@@ -70,5 +70,46 @@ describe("AI 图片尺寸", () => {
       true,
     );
     expect(isFreeQuotaError(new Error("Failed to fetch"))).toBe(false);
+  });
+
+  it("色彩校准遇到构图微偏时不会把深色轮廓漂白成浅色背景", () => {
+    // Generated has a dark outline pixel [12, 12, 12] overlapping shifted white source [250, 250, 250]
+    const source = new Uint8ClampedArray([
+      250, 250, 250, 255,
+      250, 250, 250, 255,
+    ]);
+    const generated = new Uint8ClampedArray([
+      12, 12, 12, 255,
+      240, 240, 240, 255,
+    ]);
+    const restored = restoreSourceColors(source, generated, 2, 1);
+    expect([...restored.slice(0, 3)]).toEqual([12, 12, 12]);
+    expect([...restored.slice(4, 7)]).toEqual([250, 250, 250]);
+  });
+
+  it("自动检测 AI 伪像素网格并消除格内抗锯齿模糊", () => {
+    const block = 8;
+    const cells = 12;
+    const size = block * cells;
+    const pixels = new Uint8ClampedArray(size * size * 4);
+    for (let cy = 0; cy < cells; cy += 1)
+      for (let cx = 0; cx < cells; cx += 1) {
+        const base = (cx + cy) % 2 === 0 ? [240, 60, 60] : [40, 90, 220];
+        for (let y = 0; y < block; y += 1)
+          for (let x = 0; x < block; x += 1) {
+            // Add blurry anti-aliased edge on cell border
+            const isEdge = x === 0 || y === 0;
+            const color = isEdge
+              ? [140, 75, 140, 255]
+              : [base[0], base[1], base[2], 255];
+            pixels.set(color, ((cy * block + y) * size + cx * block + x) * 4);
+          }
+      }
+    const result = snapAiPixelGrid(pixels, size, size);
+    expect(result.snapped).toBe(true);
+    expect(result.stepX).toBe(block);
+    expect(result.stepY).toBe(block);
+    // Border pixel (0, 0) of cell (0, 0) should be snapped cleanly back to red [240, 60, 60]
+    expect([...result.data.slice(0, 3)]).toEqual([240, 60, 60]);
   });
 });

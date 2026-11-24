@@ -1,12 +1,22 @@
+export type BeadMaterial
+  = | "solid"
+    | "pearl"
+    | "glow"
+    | "transparent"
+    | "neon"
+    | "special";
+
 export type BeadColor = {
   id: string;
   name: string;
   hex: string;
   rgb: [number, number, number];
   lab: [number, number, number];
+  material: BeadMaterial;
 };
 
 export type ProcessingMode = "edge" | "dominant" | "average";
+export type DitheringMode = "none" | "bayer" | "floyd-steinberg";
 export type BackgroundMode = "plain" | "keep";
 export type GenerationMode = "local" | "ai";
 export type SourceVariant
@@ -49,6 +59,9 @@ export type GenerationSettings = {
   paletteSize: number;
   excludedColorIds: string[];
   processingMode: ProcessingMode;
+  dithering?: DitheringMode;
+  contrast?: number;
+  saturation?: number;
   colorMerge: number;
   background: BackgroundMode;
   mirror: boolean;
@@ -99,9 +112,12 @@ export const DEFAULT_TRANSFORM: SourceTransform = {
 export const DEFAULT_SETTINGS: GenerationSettings = {
   longestEdge: 65,
   maxColors: 12,
-  paletteSize: 291,
+  paletteSize: 221,
   excludedColorIds: [],
   processingMode: "edge",
+  dithering: "none",
+  contrast: 0,
+  saturation: 0,
   colorMerge: 5,
   background: "plain",
   mirror: false,

@@ -78,6 +78,8 @@ import {
   setCell,
 } from "@/lib/editor";
 import {
+  analyzePatternStructure,
+  cleanFloatingBeads,
   copyPatternPng,
   downloadPatternPng,
   imageToPattern,
@@ -597,6 +599,13 @@ export function Result({
   const adjustmentTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     adjustingRef = useRef(false),
     draftSettingsRef = useRef(draftSettings);
+  const baselineRef = useRef<{
+    settingsKey: string;
+    cells: Array<string | null>;
+    originalUrl: string;
+    processedSource?: Blob;
+    transform: Project["transform"];
+  } | null>(null);
   const pendingCallback = useRef(onPendingChange);
   const keyboardActions = useRef<{
     chooseTool: (tool: WorkbenchTool) => void;
@@ -605,6 +614,10 @@ export function Result({
   } | null>(null);
 
   const contentSize = useMemo(() => patternContentSize(pattern), [pattern]);
+  const structure = useMemo(
+    () => analyzePatternStructure(pattern.cells, pattern.width),
+    [pattern.cells, pattern.width],
+  );
   const physicalSize = contentSize
     ? [contentSize.width, contentSize.height]
         .sort((a, b) => b - a)
@@ -640,12 +653,21 @@ export function Result({
   useEffect(() => {
     if (!projectRef.current.pattern.contentBounds) return;
     let cancelled = false;
+    const settingsKey = JSON.stringify(projectRef.current.settings);
     void generatedProjectPattern(projectRef.current)
-      .then(({ pattern: generated }) => {
-        if (!cancelled)
+      .then(({ originalUrl, pattern: generated, processedSource, transform }) => {
+        if (!cancelled) {
+          baselineRef.current = {
+            settingsKey,
+            cells: generated.cells,
+            originalUrl,
+            processedSource,
+            transform,
+          };
           setHasManualEdits(
             findCellEdits(patternRef.current.cells, generated.cells).length > 0,
           );
+        }
       })
       .catch(() => {});
     return () => {
@@ -927,17 +949,26 @@ export function Result({
     const current = projectRef.current;
     let applied = false;
     try {
-      const {
-        originalUrl,
-        pattern: generatedCurrent,
-        processedSource: savedProcessedSource,
-        transform,
-      } = await generatedProjectPattern(current, setNotice);
-      let processedSource = savedProcessedSource;
-      const edits = findCellEdits(
-        patternRef.current.cells,
-        generatedCurrent.cells,
-      );
+      const currentSettingsKey = JSON.stringify(current.settings);
+      let originalUrl: string;
+      let baselineCells: Array<string | null>;
+      let processedSource: Blob | undefined;
+      let transform: Project["transform"];
+
+      if (baselineRef.current?.settingsKey === currentSettingsKey) {
+        originalUrl = baselineRef.current.originalUrl;
+        baselineCells = baselineRef.current.cells;
+        processedSource = baselineRef.current.processedSource ?? current.processedSource;
+        transform = baselineRef.current.transform;
+      }
+      else {
+        const baseline = await generatedProjectPattern(current, setNotice);
+        originalUrl = baseline.originalUrl;
+        baselineCells = baseline.pattern.cells;
+        processedSource = baseline.processedSource;
+        transform = baseline.transform;
+      }
+      const edits = findCellEdits(patternRef.current.cells, baselineCells);
       const settings = requestedSettings;
       const backgroundRemoved = settings.background !== "keep";
       let sourceUrl = originalUrl;
@@ -966,6 +997,13 @@ export function Result({
         transform,
         backgroundRemoved ? originalUrl : undefined,
       );
+      baselineRef.current = {
+        settingsKey: JSON.stringify(settings),
+        cells: generatedPattern.cells,
+        originalUrl,
+        processedSource,
+        transform,
+      };
       const nextPattern = edits.length && !discardManualEdits
         ? {
             ...generatedPattern,
@@ -1062,6 +1100,43 @@ export function Result({
     draftSettingsRef.current = next;
     setDraftSettings(next);
     void applyAdjustments(next, true);
+  }
+
+  async function removeFloatingBeads() {
+    if (busy) return;
+    const before = patternRef.current;
+    const result = cleanFloatingBeads(before.cells, before.width);
+    if (!result.removed) return setNotice("当前没有悬空浮豆");
+    setSaving(true);
+    setNotice("正在清理悬空浮豆…");
+    const nextPattern = { ...before, cells: result.cells };
+    const next = {
+      ...projectRef.current,
+      pattern: nextPattern,
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      await saveProject(next);
+      projectRef.current = next;
+      updatePattern(nextPattern);
+      onChange(next);
+      setHistory(items => [
+        ...items.slice(-29),
+        historyEntry(projectRef.current, before),
+      ]);
+      setFuture([]);
+      setHasManualEdits(true);
+      setNotice(`已清理 ${result.removed} 颗悬空浮豆`);
+    }
+    catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "清理失败，原图纸已保留。",
+        "warning",
+      );
+    }
+    finally {
+      setSaving(false);
+    }
   }
 
   async function confirmDelete() {
@@ -1720,6 +1795,152 @@ export function Result({
                         ))}
                       </div>
                     </fieldset>
+                    <fieldset
+                      className="panel-number-control"
+                      disabled={busy}
+                    >
+                      <legend>
+                        MARD 色库
+                        <small>
+                          {draftSettings.paletteSize === 221
+                            ? "默认 221 实色"
+                            : draftSettings.paletteSize === 291
+                              ? "含珠光/透明/夜光"
+                              : `精简 ${draftSettings.paletteSize} 色`}
+                        </small>
+                      </legend>
+                      <div>
+                        {(
+                          [
+                            { size: 48, label: "48色" },
+                            { size: 72, label: "72色" },
+                            { size: 120, label: "120色" },
+                            { size: 221, label: "221实色" },
+                            { size: 291, label: "291全色" },
+                          ] as const
+                        ).map(item => (
+                          <button
+                            key={item.size}
+                            type="button"
+                            aria-pressed={draftSettings.paletteSize === item.size}
+                            onClick={() =>
+                              scheduleAdjustments({
+                                ...draftSettingsRef.current,
+                                paletteSize: item.size,
+                              })}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </fieldset>
+                    <fieldset>
+                      <legend>渐变抖动</legend>
+                      <div className="panel-processing-modes max-[641px]:[&_button]:min-h-[52px]!">
+                        {(
+                          [
+                            {
+                              id: "none",
+                              title: "关闭",
+                              description: "色块整洁易摆",
+                            },
+                            {
+                              id: "bayer",
+                              title: "有序网格",
+                              description: "规律过渡防色带",
+                            },
+                            {
+                              id: "floyd-steinberg",
+                              title: "柔和扩散",
+                              description: "适合照片与光影",
+                            },
+                          ] as const
+                        ).map(item => (
+                          <button
+                            type="button"
+                            key={item.id}
+                            className={
+                              (draftSettings.dithering ?? "none") === item.id
+                                ? "active"
+                                : ""
+                            }
+                            aria-pressed={
+                              (draftSettings.dithering ?? "none") === item.id
+                            }
+                            onClick={() =>
+                              scheduleAdjustments({
+                                ...draftSettingsRef.current,
+                                dithering: item.id,
+                              })}
+                          >
+                            <strong>{item.title}</strong>
+                            <small>{item.description}</small>
+                          </button>
+                        ))}
+                      </div>
+                    </fieldset>
+                    <label className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!">
+                      <span>
+                        对比度微调
+                        <output>
+                          {(draftSettings.contrast ?? 0) > 0
+                            ? `+${draftSettings.contrast}`
+                            : draftSettings.contrast ?? 0}
+                        </output>
+                      </span>
+                      <input
+                        type="range"
+                        min="-30"
+                        max="30"
+                        value={draftSettings.contrast ?? 0}
+                        onChange={event =>
+                          scheduleAdjustments({
+                            ...draftSettingsRef.current,
+                            contrast: Number(event.target.value),
+                          })}
+                      />
+                    </label>
+                    <label className="panel-range max-[641px]:[&_input]:h-[34px]! max-[641px]:[&_input]:min-h-[34px]!">
+                      <span>
+                        饱和度微调
+                        <output>
+                          {(draftSettings.saturation ?? 0) > 0
+                            ? `+${draftSettings.saturation}`
+                            : draftSettings.saturation ?? 0}
+                        </output>
+                      </span>
+                      <input
+                        type="range"
+                        min="-30"
+                        max="30"
+                        value={draftSettings.saturation ?? 0}
+                        onChange={event =>
+                          scheduleAdjustments({
+                            ...draftSettingsRef.current,
+                            saturation: Number(event.target.value),
+                          })}
+                      />
+                    </label>
+                    {(structure.floatingIndices.length > 0
+                      || structure.diagonalOnlyIndices.length > 0) && (
+                      <div className="flex items-center justify-between gap-2 rounded-xl border border-[#e7bd6c] bg-[#fff8e8] px-3 py-2 text-xs text-[#674b12]">
+                        <span>
+                          {structure.floatingIndices.length > 0
+                            ? `检测到 ${structure.floatingIndices.length} 颗悬空浮豆`
+                            : `检测到 ${structure.diagonalOnlyIndices.length} 处对角弱连接（熨烫易断）`}
+                        </span>
+                        {structure.floatingIndices.length > 0 && (
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() => void removeFloatingBeads()}
+                          >
+                            清理浮豆
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
                 <fieldset className="panel-palette">

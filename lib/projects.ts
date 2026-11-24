@@ -86,6 +86,18 @@ export function normalizeProject(value: LegacyProject): Project {
         30,
         project.settings.colorMerge ?? DEFAULT_SETTINGS.colorMerge,
       ),
+      dithering: project.settings.dithering ?? DEFAULT_SETTINGS.dithering,
+      contrast: Math.max(
+        -30,
+        Math.min(30, project.settings.contrast ?? DEFAULT_SETTINGS.contrast ?? 0),
+      ),
+      saturation: Math.max(
+        -30,
+        Math.min(
+          30,
+          project.settings.saturation ?? DEFAULT_SETTINGS.saturation ?? 0,
+        ),
+      ),
       excludedColorIds: project.settings.excludedColorIds || [],
     },
     backgroundRemoved: project.backgroundRemoved ?? background !== "keep",
@@ -171,6 +183,9 @@ const SettingsSchema = z.object({
   paletteSize: z.number().min(1).max(291),
   excludedColorIds: z.array(z.string()),
   processingMode: z.enum(["edge", "dominant", "average"]),
+  dithering: z.enum(["none", "bayer", "floyd-steinberg"]).optional(),
+  contrast: z.number().min(-30).max(30).optional(),
+  saturation: z.number().min(-30).max(30).optional(),
   colorMerge: z.number().min(0).max(60),
   background: z.enum(["plain", "fast", "precise", "keep"]),
   mirror: z.boolean().optional(),
